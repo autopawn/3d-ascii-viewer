@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-static const char LUM_OPTIONS[] = ".,-~:;!*=#$@";
+static const char LUM_OPTIONS[] = ".,':;!+*=#$@";
 static const int LUM_OPTIONS_COUNT = sizeof(LUM_OPTIONS) - 1;
 static const vec3 LIGHT_ORIGIN = {-1.0, 1.0, 0.0};
 
