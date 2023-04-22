@@ -103,13 +103,21 @@ struct surface *surface_init(unsigned int size_x, unsigned int size_y)
 
     surface->pixels = malloc(size_y * size_x * sizeof(*surface->pixels));
     assert(surface->pixels);
+    surface_clear(surface);
+
+    return surface;
+}
+
+void surface_clear(struct surface *surface)
+{
+    assert(surface);
+    assert(surface->pixels);
+
     for (int i = 0; i < surface->size_y * surface->size_x; ++i)
     {
         surface->pixels[i].color = ' ';
         surface->pixels[i].z = INFINITY;
     }
-
-    return surface;
 }
 
 void surface_free(struct surface *surface)
@@ -167,9 +175,9 @@ void surface_draw_triangle(struct surface *surface, struct triangle tri)
     if (!triangle_orientation(&tri))
         return;
 
-    tri = triangle_sort_by_x(tri);
-
     vec3 normal = triangle_normal(&tri);
+
+    tri = triangle_sort_by_x(tri);
 
     char color = tri.color;
     if (!color)
