@@ -1,3 +1,4 @@
+viewer
 src/out
 
 # Prerequisites
@@ -6,7 +7,7 @@ src/out
 # Object files
 *.o
 *.ko
-*.obj
+src/*.obj
 *.elf
 
 # Linker output
