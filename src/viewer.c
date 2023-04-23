@@ -4,15 +4,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
+#include <sys/time.h>
 #include <argp.h>
-
-// Screen clear function
-#ifdef _WIN32
-#include <conio.h>
-#else
-#include <stdio.h>
-#define clrscr() printf("\e[1;1H\e[2J")
-#endif
 
 // Program documentation.
 static char doc[] =
@@ -23,12 +16,14 @@ static char args_doc[] = "INPUT_FILE";
 static struct argp_option options[] = {
   {"width",     'w',    "size",    0,   "Output width in characters" },
   {"height",    'h',    "size",    0,   "Output height in characters" },
+  {"fps",       'f',    "frames",  0,   "Frames per second." },
   { 0 },
 };
 
 struct arguments
 {
-    int surface_width, surface_height;
+    int surface_width, surface_height, fps;
+
     int arg_num;
     char *input_file;
 };
@@ -48,6 +43,10 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 
         case 'h':
             args->surface_height = atoi(arg);
+            break;
+
+        case 'f':
+            args->fps = atoi(arg);
             break;
 
         case ARGP_KEY_ARG:
@@ -76,7 +75,48 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
     return 0;
 }
 
+// The argp parser
 static struct argp argp = {options, parse_opt, args_doc, doc};
+
+// Screen clear function
+static void clrscr(void)
+{
+    printf("\e[1;1H\e[2J");
+}
+
+// Get current time in microseconds
+unsigned long long get_current_useconds(void)
+{
+    unsigned long long ret;
+    struct timeval time;
+
+    gettimeofday(&time, NULL);
+    ret = 1000000 * time.tv_sec;
+    ret += time.tv_usec;
+
+    return ret;
+}
+
+// Wait until frame ends function
+static void tick(unsigned long long *last_target, unsigned long long frame_duration)
+{
+    unsigned long long current, target, delta;
+
+    current = get_current_useconds();
+    target = *last_target + frame_duration;
+    if (current < target)
+    {
+        delta = target - current;
+        if (delta > frame_duration)
+            delta = frame_duration;
+        usleep(delta);
+        *last_target = current + delta;
+    }
+    else
+    {
+        *last_target = current;
+    }
+}
 
 // Translate from the [-1,1]^3 cube to the screen surface.
 vec3 vec3_to_screen(vec3 v)
@@ -112,6 +152,7 @@ int main(int argc, char *argv[])
     // Default values
     args.surface_width = 80;
     args.surface_height = 50;
+    args.fps = 20;
 
     argp_parse(&argp, argc, argv, 0, 0, &args);
 
@@ -124,14 +165,20 @@ int main(int argc, char *argv[])
     if (!surface)
         return 1;
 
+    // Initialize clock
+    unsigned long long frame_duration = (1000000 + args.fps - 1)/args.fps;
+    unsigned long long clock = get_current_useconds();
+
     int t = 0;
     while (1)
     {
-        float elev = 0.125 * 3.14159265358979323846 * (sinf(0.05 * t) - 1);
+        float time = t * (frame_duration / 1000000.0);
+
+        float elev = 0.125 * 3.14159265358979323846 * (sinf(0.5 * time) - 1);
         float elev_cos = cosf(elev);
         float elev_sin = sinf(elev);
 
-        float az = 0.12 * t;
+        float az = 2.0 * time;
         float az_cos = cosf(az);
         float az_sin = sinf(az);
 
@@ -165,7 +212,7 @@ int main(int argc, char *argv[])
 
         clrscr();
         surface_print(stdout, surface);
-        usleep(100000);
+        tick(&clock, frame_duration);
         t++;
     }
 
