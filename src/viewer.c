@@ -14,15 +14,17 @@ static char doc[] =
 static char args_doc[] = "INPUT_FILE";
 
 static struct argp_option options[] = {
-  {"width",     'w',    "size",    0,   "Output width in characters" },
-  {"height",    'h',    "size",    0,   "Output height in characters" },
-  {"fps",       'f',    "frames",  0,   "Frames per second." },
+  {"width",     'w',    "size",     0,   "Output width in characters" },
+  {"height",    'h',    "size",     0,   "Output height in characters" },
+  {"fps",       'f',    "frames",   0,   "Frames per second." },
+  {"duration",  'd',    "seconds",  0,   "Stop the program after this many seconds." },
   { 0 },
 };
 
 struct arguments
 {
     int surface_width, surface_height, fps;
+    float duration;
 
     int arg_num;
     char *input_file;
@@ -60,6 +62,15 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
             if (errno || args->fps <= 0)
             {
                 fprintf(stderr, "ERROR: Invalid FPS: %s\n", arg);
+                exit(1);
+            }
+            break;
+
+        case 'd':
+            args->duration = strtof(arg, NULL);
+            if (errno || args->duration <= 0)
+            {
+                fprintf(stderr, "ERROR: Invalid duration: %s\n", arg);
                 exit(1);
             }
             break;
@@ -168,6 +179,7 @@ int main(int argc, char *argv[])
     args.surface_width = 80;
     args.surface_height = 40;
     args.fps = 20;
+    args.duration = 0;
 
     argp_parse(&argp, argc, argv, 0, 0, &args);
 
@@ -192,7 +204,9 @@ int main(int argc, char *argv[])
 
     // Initialize clock
     unsigned long long frame_duration = (1000000 + args.fps - 1)/args.fps;
-    unsigned long long clock = get_current_useconds();
+    unsigned long long start = get_current_useconds();
+    unsigned long long clock = start;
+    unsigned long long duration = (unsigned long long) (args.duration * 1000000);
 
     int t = 0;
     while (1)
@@ -237,7 +251,12 @@ int main(int argc, char *argv[])
 
         clrscr();
         surface_print(stdout, surface);
+
+        if (duration > 0 && clock - start > duration)
+            break;
+
         tick(&clock, frame_duration);
+
         t++;
     }
 
