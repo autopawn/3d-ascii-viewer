@@ -1,6 +1,5 @@
 #include "surface.h"
 
-#include <math.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -21,20 +20,6 @@ static float maxi(float a, float b)
     if (a > b)
         return a;
     return b;
-}
-
-static float vec3_mag(vec3 v)
-{
-    return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
-}
-
-static vec3 vec3_normalize(vec3 v)
-{
-    float mag = vec3_mag(v);
-    v.x /= mag;
-    v.y /= mag;
-    v.z /= mag;
-    return v;
 }
 
 static float cosine_similarity(vec3 a, vec3 b)
@@ -91,7 +76,6 @@ static struct triangle triangle_sort_by_x(struct triangle triangle)
     }
     return triangle;
 }
-
 
 struct surface *surface_init(unsigned int size_x, unsigned int size_y)
 {
