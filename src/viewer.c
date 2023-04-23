@@ -5,6 +5,13 @@
 #include <unistd.h>
 #include <time.h>
 
+#ifdef _WIN32
+#include <conio.h>
+#else
+#include <stdio.h>
+#define clrscr() printf("\e[1;1H\e[2J")
+#endif
+
 // Translate from the [-1,1]^3 cube to the screen surface.
 vec3 vec3_to_screen(vec3 v)
 {
@@ -87,6 +94,7 @@ int main(int argc, char const *argv[])
             surface_draw_triangle(surface, tri);
         }
 
+        clrscr();
         surface_print(stdout, surface);
         usleep(100000);
     }
