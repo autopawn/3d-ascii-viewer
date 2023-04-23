@@ -1,6 +1,7 @@
 #include "surface.h"
 #include "model.h"
 
+#include <ncurses.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
@@ -24,6 +25,7 @@ static struct argp_option options[] = {
 struct arguments
 {
     int surface_width, surface_height, fps;
+    bool finite;
     float duration;
 
     int arg_num;
@@ -68,11 +70,12 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 
         case 'd':
             args->duration = strtof(arg, NULL);
-            if (errno || args->duration <= 0)
+            if (errno)
             {
                 fprintf(stderr, "ERROR: Invalid duration: %s\n", arg);
                 exit(1);
             }
+            args->finite = true;
             break;
 
         case ARGP_KEY_ARG:
@@ -103,12 +106,6 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 
 // The argp parser
 static struct argp argp = {options, parse_opt, args_doc, doc};
-
-// Screen clear function
-static void clrscr(void)
-{
-    printf("\e[1;1H\e[2J");
-}
 
 // Get current time in microseconds
 unsigned long long get_current_useconds(void)
@@ -208,6 +205,10 @@ int main(int argc, char *argv[])
     unsigned long long clock = start;
     unsigned long long duration = (unsigned long long) (args.duration * 1000000);
 
+    // Start curses mode
+    initscr();
+    noecho();
+
     int t = 0;
     while (1)
     {
@@ -249,10 +250,12 @@ int main(int argc, char *argv[])
             surface_draw_triangle(surface, tri);
         }
 
-        clrscr();
-        surface_print(stdout, surface);
+        // Print surface
+        move(0, 0);
+        surface_printw(surface);
+        refresh();
 
-        if (duration > 0 && clock - start > duration)
+        if (args.finite && clock - start > duration)
             break;
 
         tick(&clock, frame_duration);
@@ -260,6 +263,13 @@ int main(int argc, char *argv[])
         t++;
     }
 
+    // End curses mode
+    endwin();
+
+    // One last print, in case the user wants to copy the last frame after the given duration.
+    surface_print(stdout, surface);
+
+    // Free memory
     surface_free(surface);
     model_free(model);
 }

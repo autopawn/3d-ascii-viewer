@@ -26,3 +26,5 @@ void surface_clear(struct surface *surface);
 void surface_draw_triangle(struct surface *surface, struct triangle triangle);
 
 void surface_print(FILE *fp, const struct surface *surface);
+
+void surface_printw(const struct surface *surface);

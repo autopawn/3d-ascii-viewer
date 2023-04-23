@@ -1,8 +1,9 @@
 #include "surface.h"
 
 #include <assert.h>
-#include <stdlib.h>
+#include <ncurses.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 static const char LUM_OPTIONS[] = ".,':;!+*=#$@";
 static const int LUM_OPTIONS_COUNT = sizeof(LUM_OPTIONS) - 1;
@@ -218,5 +219,17 @@ void surface_print(FILE *fp, const struct surface *surface)
             fprintf(fp, "%c", surface->pixels[yy * surface->size_x + xx].color);
         }
         fprintf(fp, "\n");
+    }
+}
+
+void surface_printw(const struct surface *surface)
+{
+    for (int yy = 0; yy < surface->size_y; ++yy)
+    {
+        for (int xx = 0; xx < surface->size_x; ++xx)
+        {
+            printw("%c", surface->pixels[yy * surface->size_x + xx].color);
+        }
+        printw("\n");
     }
 }

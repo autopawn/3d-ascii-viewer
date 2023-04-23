@@ -1,7 +1,10 @@
 CC = gcc
-CFLAGS = -lm
+CFLAGS = -lm -lncurses
+SRC_DIR = src
 
-viewer: src/*.c
+SRCS := $(shell find $(SRC_DIR) -name '*.c')
+
+viewer: $(SRCS)
 	$(CC) $? $(CFLAGS) -o $@
 
 clean:
