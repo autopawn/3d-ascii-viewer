@@ -2,6 +2,26 @@
 
 Viewer of 3D models in ASCII, written in C.
 
+## Compile an run the program
+
+Compile the program using the `make` command:
+
+```
+$ make
+```
+
+You can try it passing any of the models in the `models` folder as an argument:
+
+```
+$ ./viewer models/fox.obj
+```
+
+For additional options pass the `--help` option.
+
+```
+$ ./viewer --help
+```
+
 ## Models
 
 * [Fox and ShibaInu models](https://opengameart.org/content/fox-and-shiba) made by PixelMannen for the Public Domain (CC0).
