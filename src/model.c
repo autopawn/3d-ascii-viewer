@@ -11,13 +11,19 @@ static struct model *model_init(void)
     struct model *model = malloc(sizeof(*model));
 
     model->faces_capacity = 1;
-    model->idxs = malloc(model->faces_capacity * 3 * sizeof(*model->idxs));
-    assert(model->idxs);
+    if (!(model->idxs = malloc(model->faces_capacity * 3 * sizeof(*model->idxs))))
+    {
+        fprintf(stderr, "ERROR: Memory allocation failure.\n");
+        exit(1);
+    }
     model->faces_count = 0;
 
     model->vertex_capacity = 1;
-    model->vertexes = malloc(model->vertex_capacity * sizeof(*model->vertexes));
-    assert(model->vertexes);
+    if (!(model->vertexes = malloc(model->vertex_capacity * sizeof(*model->vertexes))))
+    {
+        fprintf(stderr, "ERROR: Memory allocation failure.\n");
+        exit(1);
+    }
     model->vertex_count = 0;
 }
 
@@ -26,8 +32,11 @@ static void model_add_vertex(struct model *model, vec3 vec)
     if (model->vertex_count == model->vertex_capacity)
     {
         model->vertex_capacity *= 2;
-        model->vertexes = realloc(model->vertexes, model->vertex_capacity * sizeof(*model->vertexes));
-        assert(model->vertexes);
+        if (!(model->vertexes = realloc(model->vertexes, model->vertex_capacity * sizeof(*model->vertexes))))
+        {
+            fprintf(stderr, "ERROR: Memory allocation failure.\n");
+            exit(1);
+        }
     }
 
     model->vertexes[model->vertex_count] = vec;
@@ -69,8 +78,11 @@ static void model_add_face(struct model *model, int idx1, int idx2, int idx3)
     if (model->faces_count == model->faces_capacity)
     {
         model->faces_capacity *= 2;
-        model->idxs = realloc(model->idxs, 3 * model->faces_capacity * sizeof(*model->idxs));
-        assert(model->idxs);
+        if (!(model->idxs = realloc(model->idxs, 3 * model->faces_capacity * sizeof(*model->idxs))))
+        {
+            fprintf(stderr, "ERROR: Memory allocation failure.\n");
+            exit(1);
+        }
     }
     model->idxs[3 * model->faces_count + 0] = relativize_idx(idx1, model->vertex_count);
     model->idxs[3 * model->faces_count + 1] = relativize_idx(idx2, model->vertex_count);
@@ -245,7 +257,8 @@ struct model *model_load_from_obj(const char *fname)
             {
                 fprintf(stderr, "ERROR: invalid \"v\" instruction.\n");
                 fclose(fp);
-                return model;
+                model_free(model);
+                return NULL;
             }
 
             vec3 vec;
@@ -263,7 +276,8 @@ struct model *model_load_from_obj(const char *fname)
             {
                 fprintf(stderr, "ERROR: invalid \"f\" instruction.\n");
                 fclose(fp);
-                return model;
+                model_free(model);
+                return NULL;
             }
 
             while (parse_int(&bufferp, &i3))

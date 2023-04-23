@@ -38,15 +38,30 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
   switch (key)
     {
         case 'w':
-            args->surface_width = atoi(arg);
+            args->surface_width = strtol(arg, NULL, 10);
+            if (errno || args->surface_width <= 0)
+            {
+                fprintf(stderr, "ERROR: Invalid width: %s\n", arg);
+                exit(1);
+            }
             break;
 
         case 'h':
-            args->surface_height = atoi(arg);
+            args->surface_height = strtol(arg, NULL, 10);
+            if (errno || args->surface_height <= 0)
+            {
+                fprintf(stderr, "ERROR: Invalid height: %s\n", arg);
+                exit(1);
+            }
             break;
 
         case 'f':
-            args->fps = atoi(arg);
+            args->fps = strtol(arg, NULL, 10);
+            if (errno || args->fps <= 0)
+            {
+                fprintf(stderr, "ERROR: Invalid FPS: %s\n", arg);
+                exit(1);
+            }
             break;
 
         case ARGP_KEY_ARG:
@@ -151,7 +166,7 @@ int main(int argc, char *argv[])
 
     // Default values
     args.surface_width = 80;
-    args.surface_height = 50;
+    args.surface_height = 40;
     args.fps = 20;
 
     argp_parse(&argp, argc, argv, 0, 0, &args);
@@ -159,6 +174,16 @@ int main(int argc, char *argv[])
     struct model *model = model_load_from_obj(args.input_file);
     if (!model)
         return 1;
+    if (model->vertex_count == 0)
+    {
+        fprintf(stderr, "ERROR: Could not read model vertexes.\n");
+        exit(1);
+    }
+    if (model->faces_count == 0)
+    {
+        fprintf(stderr, "ERROR: Could not read model faces.\n");
+        exit(1);
+    }
     model_normalize(model);
 
     struct surface *surface = surface_init(args.surface_width, args.surface_height);

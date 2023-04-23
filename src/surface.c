@@ -79,13 +79,22 @@ static struct triangle triangle_sort_by_x(struct triangle triangle)
 
 struct surface *surface_init(unsigned int size_x, unsigned int size_y)
 {
-    struct surface *surface = malloc(sizeof(*surface));
-    assert(surface);
+    struct surface *surface;
+
+    if (!(surface = malloc(sizeof(*surface))))
+    {
+        fprintf(stderr, "ERROR: Memory allocation failure.\n");
+        exit(1);
+    }
 
     surface->size_x = size_x;
     surface->size_y = size_y;
 
-    surface->pixels = malloc(size_y * size_x * sizeof(*surface->pixels));
+    if (!(surface->pixels = malloc(size_y * size_x * sizeof(*surface->pixels))))
+    {
+        fprintf(stderr, "ERROR: Memory allocation failure.\n");
+        exit(1);
+    }
     assert(surface->pixels);
     surface_clear(surface);
 
