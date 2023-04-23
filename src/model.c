@@ -214,7 +214,7 @@ static bool parse_int(char **buffer, int *i)
     return true;
 }
 
-struct model *model_init_from_obj(const char *fname)
+struct model *model_load_from_obj(const char *fname)
 {
     FILE *fp = fopen(fname, "r");
     if (!fp)

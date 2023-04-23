@@ -40,7 +40,7 @@ int main(int argc, char const *argv[])
         return 1;
     }
 
-    struct model *model = model_init_from_obj(argv[1]);
+    struct model *model = model_load_from_obj(argv[1]);
     if (!model)
         return 1;
     model_normalize(model);
