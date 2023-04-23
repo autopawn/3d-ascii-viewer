@@ -1,4 +1,4 @@
-#include "renderer.h"
+#include "surface.h"
 
 #include <math.h>
 #include <assert.h>
