@@ -4,6 +4,8 @@ Viewer of 3D models in ASCII, written in C.
 
 ![Example usage capture.](capture.gif)
 
+**Note**: Currently, the program only supports [Wavefront .obj](https://en.wikipedia.org/wiki/Wavefront_.obj_file) files.
+
 ## Compile an run the program
 
 Compile the program using the `make` command:
