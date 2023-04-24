@@ -2,6 +2,8 @@
 
 Viewer of 3D models in ASCII, written in C.
 
+![Example usage capture.](capture.gif)
+
 ## Compile an run the program
 
 Compile the program using the `make` command:
