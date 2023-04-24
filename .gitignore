@@ -1,5 +1,5 @@
 viewer
-src/out
+tmp
 
 # Prerequisites
 *.d

@@ -1,11 +1,20 @@
-CC = gcc
-CFLAGS = -lm -lncurses
-SRC_DIR = src
+TARGET_EXEC := viewer
+TEMPDIR := tmp
+
+CC      := gcc
+LDFLAGS := -lm -lncurses
+SRC_DIR := src
 
 SRCS := $(shell find $(SRC_DIR) -name '*.c')
+OBJS := $(SRCS:%=$(TEMPDIR)/%.o)
 
-viewer: $(SRCS)
-	$(CC) $? $(CFLAGS) -o $@
+$(TARGET_EXEC): $(OBJS)
+	$(CC) $(OBJS) -o $@ $(LDFLAGS)
 
+$(TEMPDIR)/%.c.o: %.c
+	mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+.PHONY: clean
 clean:
-	rm viewer
+	rm -rf $(TARGET_EXEC) $(TEMPDIR)
