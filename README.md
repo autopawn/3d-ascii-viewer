@@ -8,6 +8,10 @@ Viewer of 3D models in ASCII, written in C.
 
 ## Compile an run the program
 
+You need the following libraries:
+  - ncurses (e.g. `libncurses-dev` on Debian)
+  - argp if you don't use Linux (e.g. `argp-standalone`)
+
 Compile the program using the `make` command:
 
 ```
