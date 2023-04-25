@@ -244,6 +244,7 @@ int main(int argc, char *argv[])
     initscr();
     noecho();
 
+    timeout(0);
     int t = 0;
     while (1)
     {
@@ -260,7 +261,7 @@ int main(int argc, char *argv[])
         surface_printw(surface);
         refresh();
 
-        if (args.finite && clock - start > duration)
+        if ((args.finite && clock - start >= duration) || getch() != ERR)
             break;
 
         tick(&clock, frame_duration);
