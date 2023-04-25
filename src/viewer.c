@@ -168,6 +168,41 @@ vec3 vec3_rotate_x(float cos, float sin, vec3 v)
     return v;
 }
 
+void surface_draw_model(struct surface *surface, const struct model *model, float azimuth, float altitude)
+{
+    float elev_cos = cosf(altitude);
+    float elev_sin = sinf(altitude);
+
+    float az_cos = cosf(azimuth);
+    float az_sin = sinf(azimuth);
+
+    for (int f = 0; f < model->faces_count; ++f)
+    {
+        int i1 = model->idxs[3 * f + 0];
+        int i2 = model->idxs[3 * f + 1];
+        int i3 = model->idxs[3 * f + 2];
+
+        vec3 v1 = model->vertexes[i1];
+        vec3 v2 = model->vertexes[i2];
+        vec3 v3 = model->vertexes[i3];
+
+        v1 = vec3_rotate_y(az_cos, az_sin, v1);
+        v2 = vec3_rotate_y(az_cos, az_sin, v2);
+        v3 = vec3_rotate_y(az_cos, az_sin, v3);
+
+        v1 = vec3_rotate_x(elev_cos, elev_sin, v1);
+        v2 = vec3_rotate_x(elev_cos, elev_sin, v2);
+        v3 = vec3_rotate_x(elev_cos, elev_sin, v3);
+
+        struct triangle tri = {0};
+        tri.p1 = vec3_to_screen(v1);
+        tri.p2 = vec3_to_screen(v2);
+        tri.p3 = vec3_to_screen(v3);
+
+        surface_draw_triangle(surface, tri);
+    }
+}
+
 int main(int argc, char *argv[])
 {
     struct arguments args = {0};
@@ -212,43 +247,13 @@ int main(int argc, char *argv[])
     int t = 0;
     while (1)
     {
-        float time = t * (frame_duration / 1000000.0);
-
-        float elev = 0.125 * 3.14159265358979323846 * (sinf(0.5 * time) - 1);
-        float elev_cos = cosf(elev);
-        float elev_sin = sinf(elev);
-
-        float az = 2.0 * time;
-        float az_cos = cosf(az);
-        float az_sin = sinf(az);
-
         surface_clear(surface);
 
-        for (int f = 0; f < model->faces_count; ++f)
-        {
-            int i1 = model->idxs[3 * f + 0];
-            int i2 = model->idxs[3 * f + 1];
-            int i3 = model->idxs[3 * f + 2];
+        float time = t * (frame_duration / 1000000.0);
+        float altitude = 0.125 * 3.14159265358979323846 * (sinf(0.5 * time) - 1);
+        float azimuth = 2.0 * time;
 
-            vec3 v1 = model->vertexes[i1];
-            vec3 v2 = model->vertexes[i2];
-            vec3 v3 = model->vertexes[i3];
-
-            v1 = vec3_rotate_y(az_cos, az_sin, v1);
-            v2 = vec3_rotate_y(az_cos, az_sin, v2);
-            v3 = vec3_rotate_y(az_cos, az_sin, v3);
-
-            v1 = vec3_rotate_x(elev_cos, elev_sin, v1);
-            v2 = vec3_rotate_x(elev_cos, elev_sin, v2);
-            v3 = vec3_rotate_x(elev_cos, elev_sin, v3);
-
-            struct triangle tri = {0};
-            tri.p1 = vec3_to_screen(v1);
-            tri.p2 = vec3_to_screen(v2);
-            tri.p3 = vec3_to_screen(v3);
-
-            surface_draw_triangle(surface, tri);
-        }
+        surface_draw_model(surface, model, azimuth, altitude);
 
         // Print surface
         move(0, 0);
