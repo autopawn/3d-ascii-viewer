@@ -53,10 +53,10 @@ static int relativize_idx(int i, int n)
         return 0;
     }
 
-    if (i > 0)
-        return i - 1;
+    if (i < 0)
+        return n + i;
 
-    return n + i;
+    return i - 1;
 }
 
 static bool model_validate_idxs(struct model *model)
