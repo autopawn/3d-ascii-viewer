@@ -2,6 +2,7 @@ TARGET_EXEC := viewer
 TEMPDIR := tmp
 
 CC      := gcc
+CFLAGS  := -Wall
 LDFLAGS := -lm -lncurses
 SRC_DIR := src
 
@@ -13,7 +14,7 @@ $(TARGET_EXEC): $(OBJS)
 
 $(TEMPDIR)/%.c.o: %.c
 	mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 .PHONY: clean
 clean:
