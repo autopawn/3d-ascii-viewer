@@ -25,6 +25,8 @@ static struct model *model_init(void)
         exit(1);
     }
     model->vertex_count = 0;
+
+    return model;
 }
 
 static void model_add_vertex(struct model *model, vec3 vec)
@@ -53,8 +55,8 @@ static int relativize_idx(int i, int n)
 
     if (i > 0)
         return i - 1;
-    if (i < 0)
-        return n + i;
+
+    return n + i;
 }
 
 static bool model_validate_idxs(struct model *model)
