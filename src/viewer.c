@@ -15,10 +15,12 @@ static char doc[] =
 static char args_doc[] = "INPUT_FILE";
 
 static struct argp_option options[] = {
-  {"width",     'w',    "size",     0,   "Output width in characters" },
-  {"height",    'h',    "size",     0,   "Output height in characters" },
-  {"fps",       'f',    "frames",   0,   "Frames per second." },
-  {"duration",  'd',    "seconds",  0,   "Stop the program after this many seconds." },
+  {"width",        'w',    "size",     0,   "Output width in characters" },
+  {"height",       'h',    "size",     0,   "Output height in characters" },
+  {"fps",          'f',    "frames",   0,   "Frames per second." },
+  {"duration",     'd',    "seconds",  0,   "Stop the program after this many seconds." },
+  {"aspect-ratio", 'a',    "ratio",    0,   "Display assuming this height/width ratio for terminal characters." },
+  {"stretch",      's',    NULL,       0,   "Stretch the model, regardless of the aspect-ratio." },
   { 0 },
 };
 
@@ -27,13 +29,15 @@ struct arguments
     int surface_width, surface_height, fps;
     bool finite;
     float duration;
+    float aspect_ratio;
+    bool stretch;
 
     int arg_num;
     char *input_file;
 };
 
 /* Parse a single option. */
-static error_t parse_opt (int key, char *arg, struct argp_state *state)
+static error_t parse_opt(int key, char *arg, struct argp_state *state)
 {
   /* Get the input argument from argp_parse, which we
      know is a pointer to our arguments structure. */
@@ -70,12 +74,25 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 
         case 'd':
             args->duration = strtof(arg, NULL);
-            if (errno)
+            if (errno || args->duration < 0)
             {
                 fprintf(stderr, "ERROR: Invalid duration: %s\n", arg);
                 exit(1);
             }
             args->finite = true;
+            break;
+
+        case 'a':
+            args->aspect_ratio = strtof(arg, NULL);
+            if (errno || args->aspect_ratio <= 0)
+            {
+                fprintf(stderr, "ERROR: Invalid aspect-ratio: %s\n", arg);
+                exit(1);
+            }
+            break;
+
+       case 's':
+            args->stretch = true;
             break;
 
         case ARGP_KEY_ARG:
@@ -142,15 +159,15 @@ static void tick(unsigned long long *last_target, unsigned long long frame_durat
 }
 
 // Translate from the [-1,1]^3 cube to the screen surface.
-vec3 vec3_to_screen(vec3 v)
+static vec3 vec3_to_surface(const struct surface *surface, vec3 v)
 {
-    v.x = 0.5 + 0.5 * v.x;
-    v.y = 0.5 - 0.5 * v.y;
+    v.x = 0.5 * surface->logical_size_x + 0.5 * v.x;
+    v.y = 0.5 * surface->logical_size_y - 0.5 * v.y;
     v.z = 0.5 + 0.5 * v.z;
     return v;
 }
 
-vec3 vec3_rotate_y(float cos, float sin, vec3 v)
+static vec3 vec3_rotate_y(float cos, float sin, vec3 v)
 {
     float x = v.x * cos - v.z * sin;
     float z = v.x * sin + v.z * cos;
@@ -159,7 +176,7 @@ vec3 vec3_rotate_y(float cos, float sin, vec3 v)
     return v;
 }
 
-vec3 vec3_rotate_x(float cos, float sin, vec3 v)
+static vec3 vec3_rotate_x(float cos, float sin, vec3 v)
 {
     float y = v.y * cos - v.z * sin;
     float z = v.y * sin + v.z * cos;
@@ -168,7 +185,7 @@ vec3 vec3_rotate_x(float cos, float sin, vec3 v)
     return v;
 }
 
-void surface_draw_model(struct surface *surface, const struct model *model, float azimuth, float altitude)
+static void surface_draw_model(struct surface *surface, const struct model *model, float azimuth, float altitude)
 {
     float elev_cos = cosf(altitude);
     float elev_sin = sinf(altitude);
@@ -195,11 +212,42 @@ void surface_draw_model(struct surface *surface, const struct model *model, floa
         v3 = vec3_rotate_x(elev_cos, elev_sin, v3);
 
         struct triangle tri = {0};
-        tri.p1 = vec3_to_screen(v1);
-        tri.p2 = vec3_to_screen(v2);
-        tri.p3 = vec3_to_screen(v3);
+        tri.p1 = vec3_to_surface(surface, v1);
+        tri.p2 = vec3_to_surface(surface, v2);
+        tri.p3 = vec3_to_surface(surface, v3);
 
         surface_draw_triangle(surface, tri);
+    }
+}
+
+static void compute_surface_logical_size(const struct model *model, float aspect_rel,
+        unsigned int width, unsigned int height, float *out_x, float *out_y)
+{
+    // Find width required by the model
+    // (height is assumed 1.0, because the model is normalized, and all azimuth and elevation rotations are considered).
+    float required_y = 1.0;
+    float required_x = 0.0;
+    for (int i = 0; i < model->vertex_count; ++i)
+    {
+        vec3 v = model->vertexes[i];
+
+        float dist_x = sqrtf(v.x * v.x + v.z * v.z);
+        if (dist_x > required_x)
+            required_x = dist_x;
+    }
+
+    // Screen width / height
+    float screen_aspect_rel = width / (height * aspect_rel);
+
+    if (screen_aspect_rel * required_y >= 1.0 * required_x)
+    {
+        *out_x = required_y * screen_aspect_rel;
+        *out_y = required_y;
+    }
+    else
+    {
+        *out_x = required_x;
+        *out_y = required_x / screen_aspect_rel;
     }
 }
 
@@ -210,6 +258,8 @@ int main(int argc, char *argv[])
     // Default values
     args.surface_width = 80;
     args.surface_height = 40;
+    args.aspect_ratio = 1.8;
+    args.stretch = false;
     args.fps = 20;
     args.duration = 0;
 
@@ -230,7 +280,14 @@ int main(int argc, char *argv[])
     }
     model_normalize(model);
 
-    struct surface *surface = surface_init(args.surface_width, args.surface_height);
+    float surface_size_x = 1.0, surface_size_y = 1.0;
+
+    if (!args.stretch)
+        compute_surface_logical_size(model, args.aspect_ratio, args.surface_width, args.surface_height,
+                &surface_size_x, &surface_size_y);
+
+    struct surface *surface = surface_init(args.surface_width, args.surface_height,
+            surface_size_x, surface_size_y);
     if (!surface)
         return 1;
 

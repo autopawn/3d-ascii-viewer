@@ -12,12 +12,19 @@ struct pixel
 
 struct surface
 {
+    // Size in characters
     unsigned int size_y, size_x;
+
+    // Logical size
+    float logical_size_x, logical_size_y;
+    // Logical size of each character
+    float dx, dy;
 
     struct pixel *pixels;
 };
 
-struct surface *surface_init(unsigned int size_x, unsigned int size_y);
+struct surface *surface_init(unsigned int size_x, unsigned int size_y, float logical_size_x,
+    float logical_size_y);
 
 void surface_free(struct surface *surface);
 

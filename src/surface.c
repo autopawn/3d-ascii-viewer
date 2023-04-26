@@ -78,7 +78,8 @@ static struct triangle triangle_sort_by_x(struct triangle triangle)
     return triangle;
 }
 
-struct surface *surface_init(unsigned int size_x, unsigned int size_y)
+struct surface *surface_init(unsigned int size_x, unsigned int size_y, float logical_size_x,
+    float logical_size_y)
 {
     struct surface *surface;
 
@@ -90,13 +91,16 @@ struct surface *surface_init(unsigned int size_x, unsigned int size_y)
 
     surface->size_x = size_x;
     surface->size_y = size_y;
+    surface->logical_size_x = logical_size_x;
+    surface->logical_size_y = logical_size_y;
+    surface->dx = logical_size_x / size_x;
+    surface->dy = logical_size_y / size_y;
 
     if (!(surface->pixels = malloc(size_y * size_x * sizeof(*surface->pixels))))
     {
         fprintf(stderr, "ERROR: Memory allocation failure.\n");
         exit(1);
     }
-    assert(surface->pixels);
     surface_clear(surface);
 
     return surface;
@@ -122,13 +126,13 @@ void surface_free(struct surface *surface)
 
 static inline int idx_x(const struct surface *surface, float x)
 {
-    float dx = 1.0 / surface->size_x;
+    float dx = surface->dx;
     return maxi(0, mini(surface->size_x - 1, (int) floorf(x / dx)));
 }
 
 static inline int idx_y(const struct surface *surface, float y)
 {
-    float dy = 1.0 / surface->size_y;
+    float dy = surface->dy;
     return maxi(0, mini(surface->size_y - 1, (int) floorf(y / dy)));
 }
 
@@ -155,8 +159,8 @@ static inline float limit_y_2(const struct triangle *tri, float x)
 static inline float triangle_depth(const struct surface *surface, const struct triangle *tri,
         vec3 normal, int xx, int yy)
 {
-    float dx = 1.0 / surface->size_x;
-    float dy = 1.0 / surface->size_y;
+    float dx = surface->dx;
+    float dy = surface->dy;
 
     float x = (xx + 0.5) * dx;
     float y = (yy + 0.5) * dy;
@@ -177,8 +181,8 @@ void surface_draw_triangle(struct surface *surface, struct triangle tri)
     if (!color)
         color = color_from_normal(normal);
 
-    float dx = 1.0 / surface->size_x;
-    float dy = 1.0 / surface->size_y;
+    float dx = surface->dx;
+    float dy = surface->dy;
 
     int xxi = idx_x(surface, tri.p1.x + dx / 2.0);
     int xxf = idx_x(surface, tri.p3.x - dx / 2.0);
