@@ -7,7 +7,7 @@
 
 static const char LUM_OPTIONS[] = ".,':;!+*=#$@";
 static const int LUM_OPTIONS_COUNT = sizeof(LUM_OPTIONS) - 1;
-static const vec3 LIGHT_ORIGIN = {-1.0, 1.0, 0.0};
+static const vec3 LIGHT_ORIGIN = {-0.70710678118, 0.70710678118, 0.0}; // must be normalized!
 
 static float mini(float a, float b)
 {
@@ -23,14 +23,14 @@ static float maxi(float a, float b)
     return b;
 }
 
-static float cosine_similarity(vec3 a, vec3 b)
+static float cosine_similarity(vec3 a, vec3 b, float a_mag, float b_mag)
 {
-    return (a.x * b.x + a.y * b.y + a.z * b.z) / (vec3_mag(a) * vec3_mag(b));
+    return (a.x * b.x + a.y * b.y + a.z * b.z) / (a_mag * b_mag);
 }
 
 static char color_from_normal(vec3 normal)
 {
-    float sim = cosine_similarity(normal, LIGHT_ORIGIN) * 0.5 + 0.5;
+    float sim = cosine_similarity(normal, LIGHT_ORIGIN, 1.0, 1.0) * 0.5 + 0.5;
     unsigned int p = (unsigned int) roundf((LUM_OPTIONS_COUNT - 1) * sim);
     return LUM_OPTIONS[p];
 }
