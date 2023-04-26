@@ -5,9 +5,9 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-static const char LUM_OPTIONS[] = ".,':;!+*=#$@";
+static const char LUM_OPTIONS[] = " .,':;!+*=#$@";
 static const int LUM_OPTIONS_COUNT = sizeof(LUM_OPTIONS) - 1;
-static const vec3 LIGHT_ORIGIN = {-0.70710678118, 0.70710678118, 0.0}; // must be normalized!
+static const vec3 LIGHT_ORIGIN = {0.57735, -0.57735, -0.57735}; // must be normalized!
 
 static float mini(float a, float b)
 {
@@ -45,13 +45,13 @@ static vec3 triangle_normal(const struct triangle *tri)
 {
     vec3 v1, v2, normal;
 
-    v1.x = tri->p2.x - tri->p1.x;
-    v1.y = tri->p2.y - tri->p1.y;
-    v1.z = tri->p2.z - tri->p1.z;
+    v1.x = tri->p3.x - tri->p1.x;
+    v1.y = tri->p3.y - tri->p1.y;
+    v1.z = tri->p3.z - tri->p1.z;
 
-    v2.x = tri->p3.x - tri->p1.x;
-    v2.y = tri->p3.y - tri->p1.y;
-    v2.z = tri->p3.z - tri->p1.z;
+    v2.x = tri->p2.x - tri->p1.x;
+    v2.y = tri->p2.y - tri->p1.y;
+    v2.z = tri->p2.z - tri->p1.z;
 
     normal.x = v1.y * v2.z - v1.z * v2.y;
     normal.y = v1.z * v2.x - v1.x * v2.z;
