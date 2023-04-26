@@ -1,28 +1,46 @@
 #include "surface.h"
 #include "model.h"
 
+#include <errno.h>
 #include <ncurses.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <time.h>
+#include <string.h>
 #include <sys/time.h>
-#include <argp.h>
+#include <time.h>
+#include <unistd.h>
+
+// Program description
+static const char *PROGRAM_NAME = "3d-ascii-viewer";
+static const char *PROGRAM_DESCRIPTION = "an OBJ 3D model format viewer for the terminal";
 
 // Program documentation.
-static char doc[] =
-  "3d-ascii-viewer -- an OBJ 3D model format viewer for the terminal";
+static void output_usage(int argc, char *argv[])
+{
+    printf("Usage: %s [OPTION...] INPUT_FILE\n", argv[0]);
+    printf("%s -- %s\n", PROGRAM_NAME, PROGRAM_DESCRIPTION);
+    printf("\n");
+    printf("  -w <size>      Output width in characters\n");
+    printf("  -h <size>      Output height in characters\n");
+    printf("  -d <seconds>   Stop the program after this many seconds.\n");
+    printf("  -f <frames>    Frames per second.\n");
+    printf("  -a <ratio>     Display assuming this height/width ratio for terminal\n");
+    printf("                 characters.\n");
+    printf("  -s             Stretch the model, regardless of the height/width ratio.\n");
+    printf("                 for terminal characters.\n");
+    printf("  -?, --help     Give this help list\n");
+    printf("\n");
 
-static char args_doc[] = "INPUT_FILE";
+    exit(1);
+}
 
-static struct argp_option options[] = {
-  {"width",        'w',    "size",     0,   "Output width in characters" },
-  {"height",       'h',    "size",     0,   "Output height in characters" },
-  {"fps",          'f',    "frames",   0,   "Frames per second." },
-  {"duration",     'd',    "seconds",  0,   "Stop the program after this many seconds." },
-  {"aspect-ratio", 'a',    "ratio",    0,   "Display assuming this height/width ratio for terminal characters." },
-  {"stretch",      's',    NULL,       0,   "Stretch the model, regardless of the aspect-ratio." },
-  { 0 },
-};
+static void output_description(int argc, char *argv[])
+{
+    printf("Usage: %s [OPTION...] INPUT_FILE\n", argv[0]);
+    printf("%s -- %s\n", PROGRAM_NAME, PROGRAM_DESCRIPTION);
+    printf("Try `%s --help' for more information.\n", argv[0]);
+
+    exit(1);
+}
 
 struct arguments
 {
@@ -36,93 +54,93 @@ struct arguments
     char *input_file;
 };
 
-/* Parse a single option. */
-static error_t parse_opt(int key, char *arg, struct argp_state *state)
+static void parse_arguments(int argc, char *argv[], struct arguments *args)
 {
-  /* Get the input argument from argp_parse, which we
-     know is a pointer to our arguments structure. */
-  struct arguments *args = state->input;
-
-  switch (key)
+    for (int i = 1; i < argc; ++i)
     {
-        case 'w':
-            args->surface_width = strtol(arg, NULL, 10);
+        if (!strcmp(argv[i], "-?") || !strcmp(argv[i], "--help"))
+        {
+            output_usage(argc, argv);
+        }
+        else if (!strcmp(argv[i], "-w"))
+        {
+            if (i >= argc - 1)
+                output_usage(argc, argv);
+            args->surface_width = strtol(argv[++i], NULL, 10);
             if (errno || args->surface_width <= 0)
             {
-                fprintf(stderr, "ERROR: Invalid width: %s\n", arg);
+                fprintf(stderr, "ERROR: Invalid width: %s\n", argv[i]);
                 exit(1);
             }
-            break;
-
-        case 'h':
-            args->surface_height = strtol(arg, NULL, 10);
+        }
+        else if (!strcmp(argv[i], "-h"))
+        {
+            if (i >= argc - 1)
+                output_usage(argc, argv);
+            args->surface_height = strtol(argv[++i], NULL, 10);
             if (errno || args->surface_height <= 0)
             {
-                fprintf(stderr, "ERROR: Invalid height: %s\n", arg);
+                fprintf(stderr, "ERROR: Invalid height: %s\n", argv[i]);
                 exit(1);
             }
-            break;
-
-        case 'f':
-            args->fps = strtol(arg, NULL, 10);
+        }
+        else if (!strcmp(argv[i], "-f"))
+        {
+            if (i >= argc - 1)
+                output_usage(argc, argv);
+            args->fps = strtol(argv[++i], NULL, 10);
             if (errno || args->fps <= 0)
             {
-                fprintf(stderr, "ERROR: Invalid FPS: %s\n", arg);
+                fprintf(stderr, "ERROR: Invalid FPS: %s\n", argv[i]);
                 exit(1);
             }
-            break;
-
-        case 'd':
-            args->duration = strtof(arg, NULL);
+        }
+        else if (!strcmp(argv[i], "-d"))
+        {
+            if (i >= argc - 1)
+                output_usage(argc, argv);
+            args->duration = strtof(argv[++i], NULL);
             if (errno || args->duration < 0)
             {
-                fprintf(stderr, "ERROR: Invalid duration: %s\n", arg);
+                fprintf(stderr, "ERROR: Invalid duration: %s\n", argv[i]);
                 exit(1);
             }
             args->finite = true;
-            break;
-
-        case 'a':
-            args->aspect_ratio = strtof(arg, NULL);
+        }
+        else if (!strcmp(argv[i], "-a"))
+        {
+            if (i >= argc - 1)
+                output_usage(argc, argv);
+            args->aspect_ratio = strtof(argv[++i], NULL);
             if (errno || args->aspect_ratio <= 0)
             {
-                fprintf(stderr, "ERROR: Invalid aspect-ratio: %s\n", arg);
+                fprintf(stderr, "ERROR: Invalid aspect-ratio: %s\n", argv[i]);
                 exit(1);
             }
-            break;
-
-       case 's':
+        }
+        else if (!strcmp(argv[i], "-s"))
+        {
             args->stretch = true;
-            break;
-
-        case ARGP_KEY_ARG:
-
+        }
+        else if (argv[i][0] == '-')
+        {
+            fprintf(stderr, "ERROR: Invalid option: %s\n", argv[i]);
+            exit(1);
+        }
+        else
+        {
             // Handle too many arguments
-            if (state->arg_num >= 1)
-                argp_usage(state);
+            if (args->input_file)
+                output_usage(argc, argv);
 
-            args->input_file = arg;
-
-            state->arg_num++;
-            break;
-
-        case ARGP_KEY_END:
-
-            // Handle not enough arguments
-            if (state->arg_num < 1)
-                argp_usage (state);
-
-            break;
-
-        default:
-            return ARGP_ERR_UNKNOWN;
+            args->input_file = argv[i];
+        }
     }
 
-    return 0;
+    // Handle too few arguments
+    if (!args->input_file)
+        output_usage(argc, argv);
 }
-
-// The argp parser
-static struct argp argp = {options, parse_opt, args_doc, doc};
 
 // Get current time in microseconds
 unsigned long long get_current_useconds(void)
@@ -253,9 +271,12 @@ static void compute_surface_logical_size(const struct model *model, float aspect
 
 int main(int argc, char *argv[])
 {
-    struct arguments args = {0};
+    if (argc == 1)
+        output_description(argc, argv);
 
-    // Default values
+    // Argument default values
+    struct arguments args = {0};
+    args.input_file = NULL;
     args.surface_width = 80;
     args.surface_height = 40;
     args.aspect_ratio = 1.8;
@@ -263,7 +284,7 @@ int main(int argc, char *argv[])
     args.fps = 20;
     args.duration = 0;
 
-    argp_parse(&argp, argc, argv, 0, 0, &args);
+    parse_arguments(argc, argv, &args);
 
     struct model *model = model_load_from_obj(args.input_file);
     if (!model)
