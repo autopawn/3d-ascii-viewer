@@ -254,6 +254,16 @@ struct model *model_load_from_obj(const char *fname)
 
     while (fgets(buffer, sizeof(buffer), fp))
     {
+        char *p = buffer;
+        while (*p)
+        {
+            if (*p == '\n' || *p == '\r')
+                *p = '\0';
+            if (*p == '\t')
+                *p = ' ';
+            p++;
+        }
+
         char *bufferp = buffer;
         char *instr = str_chop_skip_empty(&bufferp, " ");
 
