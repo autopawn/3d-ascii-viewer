@@ -133,10 +133,6 @@ void model_normalize(struct model *model)
 
     model_bounding_box(model, &min, &max);
 
-    float diameter = sqrtf((min.x - max.x)*(min.x - max.x) + (min.y - max.y)*(min.y - max.y)
-            + (min.z - max.z)*(min.z - max.z));
-    float scale = diameter == 0 ? 1.0 : 2.0 / diameter;
-
     center.x = (min.x + max.x) / 2.0;
     center.y = (min.y + max.y) / 2.0;
     center.z = (min.z + max.z) / 2.0;
@@ -146,7 +142,20 @@ void model_normalize(struct model *model)
         model->vertexes[i].x -= center.x;
         model->vertexes[i].y -= center.y;
         model->vertexes[i].z -= center.z;
+    }
 
+    float max_mag = 0.0;
+    for (int i = 0; i < model->vertex_count; ++i)
+    {
+        float mag = vec3_mag(model->vertexes[i]);
+
+        if (mag > max_mag)
+            max_mag = mag;
+    }
+
+    float scale = (max_mag == 0) ? 1.0 : 1.0 / max_mag;
+    for (int i = 0; i < model->vertex_count; ++i)
+    {
         model->vertexes[i].x *= scale;
         model->vertexes[i].y *= scale;
         model->vertexes[i].z *= scale;
