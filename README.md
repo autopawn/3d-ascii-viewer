@@ -21,13 +21,13 @@ $ make
 You can try it passing any of the models in the `models` folder as an argument:
 
 ```
-$ ./viewer models/fox.obj
+$ ./3d-ascii-viewer models/fox.obj
 ```
 
 For additional options pass the `--help` option.
 
 ```
-$ ./viewer --help
+$ ./3d-ascii-viewer --help
 ```
 
 ## Models

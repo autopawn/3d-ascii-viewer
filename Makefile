@@ -1,4 +1,4 @@
-TARGET_EXEC := viewer
+TARGET_EXEC := 3d-ascii-viewer
 TEMPDIR := tmp
 
 CC      := gcc

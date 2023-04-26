@@ -329,9 +329,6 @@ int main(int argc, char *argv[])
     // End curses mode
     endwin();
 
-    // One last print, in case the user wants to copy the last frame after the given duration.
-    surface_print(stdout, surface);
-
     // Free memory
     surface_free(surface);
     model_free(model);
