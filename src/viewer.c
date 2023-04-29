@@ -435,7 +435,7 @@ int main(int argc, char *argv[])
 
             int key = getch();
 
-            if (key == 'x')
+            if (key == 'q')
                 break;
             if (key == 'h' || key == KEY_LEFT)
                 azimuth_deg += angle_move;
