@@ -5,9 +5,9 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-static const char LUM_OPTIONS[] = " .,':;!+*=#$@";
+static const char LUM_OPTIONS[] = ".,':;!+*=#$@";
 static const int LUM_OPTIONS_COUNT = sizeof(LUM_OPTIONS) - 1;
-static const vec3 LIGHT_ORIGIN = {0.57735, -0.57735, -0.57735}; // must be normalized!
+static const vec3 LIGHT_ORIGIN = {0.70710678118, -0.70710678118, 0.0}; // must be normalized!
 
 static float mini(float a, float b)
 {

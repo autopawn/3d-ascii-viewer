@@ -264,36 +264,19 @@ static void surface_draw_model(struct surface *surface, const struct model *mode
     }
 }
 
-static void compute_surface_logical_size(const struct model *model, float aspect_rel,
-        unsigned int width, unsigned int height, float *out_x, float *out_y)
+// Model radious only in X and Z.
+static float model_xz_rad(const struct model *model)
 {
-    // Find width required by the model
-    // (height is assumed 1.0, because the model is normalized, and all azimuth and altitude
-    // rotations are considered).
-    float required_y = 1.0;
-    float required_x = 0.0;
+    float rad = 0.0;
     for (int i = 0; i < model->vertex_count; ++i)
     {
         vec3 v = model->vertexes[i];
 
-        float dist_x = sqrtf(v.x * v.x + v.z * v.z);
-        if (dist_x > required_x)
-            required_x = dist_x;
+        float dist_xz = sqrtf(v.x * v.x + v.z * v.z);
+        if (dist_xz > rad)
+            rad = dist_xz;
     }
-
-    // Screen width / height
-    float screen_aspect_rel = width / (height * aspect_rel);
-
-    if (screen_aspect_rel * required_y >= 1.0 * required_x)
-    {
-        *out_x = required_y * screen_aspect_rel;
-        *out_y = required_y;
-    }
-    else
-    {
-        *out_x = required_x;
-        *out_y = required_x / screen_aspect_rel;
-    }
+    return rad;
 }
 
 int main(int argc, char *argv[])
@@ -331,11 +314,31 @@ int main(int argc, char *argv[])
     }
     model_normalize(model);
 
-    float surface_size_x = 1.0, surface_size_y = 1.0;
+    float required_y = 1.0;
+    float required_x = model_xz_rad(model);
+    float surface_size_x, surface_size_y;
 
-    if (!args.stretch)
-        compute_surface_logical_size(model, args.aspect_ratio, args.surface_width, args.surface_height,
-                &surface_size_x, &surface_size_y);
+    if (args.stretch)
+    {
+        surface_size_x = required_x;
+        surface_size_y = required_y;
+    }
+    else
+    {
+        // Screen width / height
+        float screen_aspect_rel = args.surface_width / (args.surface_height * args.aspect_ratio);
+
+        if (screen_aspect_rel * required_y >= 1.0 * required_x)
+        {
+            surface_size_x = required_y * screen_aspect_rel;
+            surface_size_y = required_y;
+        }
+        else
+        {
+            surface_size_x = required_x;
+            surface_size_y = required_x / screen_aspect_rel;
+        }
+    }
 
     struct surface *surface = surface_init(args.surface_width, args.surface_height,
             surface_size_x, surface_size_y);
@@ -370,8 +373,11 @@ int main(int argc, char *argv[])
             surface_clear(surface);
 
             float time = t * (frame_duration / 1000000.0);
-            float azimuth = 2.0 * time;
-            float altitude = 0.125 * 3.14159265358979323846 * (1 - sinf(0.5 * time));
+
+            const float az_speed = 2.0;
+            const float al_speed = 0.5;
+            float azimuth = az_speed * time;
+            float altitude = 0.125 * 3.14159265358979323846 * (1 - sinf(0.5 * al_speed * time));
 
             surface_draw_model(surface, model, azimuth, altitude);
 
