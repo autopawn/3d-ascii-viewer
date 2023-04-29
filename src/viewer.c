@@ -9,6 +9,9 @@
 #include <time.h>
 #include <unistd.h>
 
+static const float PI = 3.1415926536;
+static const float GOLDEN_RATIO = 1.6180339887;
+
 // Program description
 static const char *PROGRAM_NAME = "3d-ascii-viewer";
 static const char *PROGRAM_DESCRIPTION = "an OBJ 3D model format viewer for the terminal";
@@ -245,7 +248,7 @@ static void surface_draw_model(struct surface *surface, const struct model *mode
     float az_cos = cosf(azimuth);
     float az_sin = sinf(azimuth);
 
-    vec3 light = (vec3){1, -1, static_light};
+    vec3 light = static_light ? (vec3){0.75, -1.0, 0.5} : (vec3){1, -1, 0};
     light = vec3_normalize(light);
 
     for (int f = 0; f < model->faces_count; ++f)
@@ -276,9 +279,13 @@ static void surface_draw_model(struct surface *surface, const struct model *mode
         if (static_light)
         {
             triangle tri_ini = {.p1 = v1, .p2 = v2, .p3 = v3};
+            tri_ini.p1 = vec3_to_surface(surface, tri_ini.p1);
+            tri_ini.p2 = vec3_to_surface(surface, tri_ini.p2);
+            tri_ini.p3 = vec3_to_surface(surface, tri_ini.p3);
+
             c = char_from_normal(triangle_normal(&tri_ini), light);
         }
-        if (!static_light)
+        else
         {
             c = char_from_normal(triangle_normal(&tri), light);
         }
@@ -377,8 +384,6 @@ int main(int argc, char *argv[])
     unsigned long long clock = start;
     unsigned long long duration = (unsigned long long) (args.duration * 1000000);
 
-    const float PI = 3.14159265358979323846;
-
     if (args.snap_mode)
     {
         float azimuth = PI * args.azimuth / 180.0;
@@ -402,9 +407,9 @@ int main(int argc, char *argv[])
             float time = t * (frame_duration / 1000000.0);
 
             const float az_speed = 2.0;
-            const float al_speed = 0.5;
+            const float al_speed = GOLDEN_RATIO * 0.25;
             float azimuth = az_speed * time;
-            float altitude = (args.top_elevation ? 0.25 : 0.125) * PI * (1 - sinf(0.5 * al_speed * time));
+            float altitude = (args.top_elevation ? 0.25 : 0.125) * PI * (1 - sinf(al_speed * time));
 
             surface_draw_model(surface, model, azimuth, altitude, args.static_light);
 
