@@ -36,6 +36,8 @@ static void output_usage(int argc, char *argv[])
     printf("  --snap <az> <al>  Output a single snap to stdout, with the given azimuth\n");
     printf("                    and altitude angles, in degrees.\n");
     printf("\n");
+    printf("  --interactive     Manually rotate the camera.\n");
+    printf("\n");
     printf("  -?, --help        Give this help list\n");
     printf("\n");
 
@@ -63,6 +65,8 @@ struct arguments
 
     bool snap_mode;
     float azimuth, altitude;
+
+    bool interactive;
 
     int arg_num;
     char *input_file;
@@ -161,6 +165,10 @@ static void parse_arguments(int argc, char *argv[], struct arguments *args)
                 fprintf(stderr, "ERROR: Invalid altitude: %s\n", argv[i]);
                 exit(1);
             }
+        }
+        else if (!strcmp(argv[i], "--interactive"))
+        {
+            args->interactive = true;
         }
         else if (argv[i][0] == '-')
         {
@@ -330,6 +338,8 @@ int main(int argc, char *argv[])
     args.azimuth = 0.0;
     args.altitude = 0.0;
 
+    args.interactive = false;
+
     parse_arguments(argc, argv, &args);
 
     struct model *model = model_load_from_obj(args.input_file);
@@ -392,13 +402,72 @@ int main(int argc, char *argv[])
 
         surface_print(stdout, surface);
     }
+    else if (args.interactive)
+    {
+        // Start curses mode
+        initscr();
+        noecho();
+        curs_set(0);
+        timeout(-1);
+        keypad(stdscr, TRUE); // read special keys.
+
+        const float angle_move = 15.0;
+        float azimuth_deg = 0.0;
+        float altitude_deg = 0.0;
+
+        while (1)
+        {
+            surface_clear(surface);
+
+            float azimuth = PI * azimuth_deg / 180;
+            float altitude = PI * altitude_deg / 180;
+
+            surface_draw_model(surface, model, azimuth, altitude, args.static_light);
+
+            // Print surface
+            move(0, 0);
+            surface_printw(surface);
+            move(0, 0);
+            printw("az: %3.0f", azimuth_deg);
+            move(1, 0);
+            printw("al: %3.0f", altitude_deg);
+            refresh();
+
+            int key = getch();
+
+            if (key == 'x')
+                break;
+            if (key == 'h' || key == KEY_LEFT)
+                azimuth_deg += angle_move;
+            if (key == 'l' || key == KEY_RIGHT)
+                azimuth_deg -= angle_move;
+            if (key == 'j' || key == KEY_DOWN)
+                altitude_deg -= angle_move;
+            if (key == 'k' || key == KEY_UP)
+                altitude_deg += angle_move;
+
+            if (azimuth_deg < 0)
+                azimuth_deg += 360;
+            if (azimuth_deg >= 360)
+                azimuth_deg -= 360;
+
+            if (altitude_deg > 90)
+                altitude_deg = 90;
+            if (altitude_deg < -90)
+                altitude_deg = -90;
+        }
+
+        // End curses mode
+        endwin();
+    }
     else
     {
         // Start curses mode
         initscr();
         noecho();
-
+        curs_set(0);
         timeout(0);
+
         int t = 0;
         while (1)
         {
