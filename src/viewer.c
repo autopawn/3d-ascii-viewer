@@ -27,6 +27,7 @@ static void output_usage(int argc, char *argv[])
     printf("                    characters.\n");
     printf("  -s                Stretch the model, regardless of the height/width ratio.\n");
     printf("                    for terminal characters.\n");
+    printf("  -t                Allow the animation to reach maximum elevation.\n");
     printf("\n");
     printf("  --snap <az> <al>  Output a single snap to stdout, with the given azimuth\n");
     printf("                    and altitude angles, in degrees.\n");
@@ -53,6 +54,7 @@ struct arguments
     float duration;
     float aspect_ratio;
     bool stretch;
+    bool top_elevation;
 
     bool snap_mode;
     float azimuth, altitude;
@@ -128,6 +130,10 @@ static void parse_arguments(int argc, char *argv[], struct arguments *args)
         else if (!strcmp(argv[i], "-s"))
         {
             args->stretch = true;
+        }
+        else if (!strcmp(argv[i], "-t"))
+        {
+            args->top_elevation = true;
         }
         else if (!strcmp(argv[i], "--snap"))
         {
@@ -293,6 +299,8 @@ int main(int argc, char *argv[])
     args.stretch = false;
     args.fps = 20;
     args.duration = 0;
+    args.top_elevation = false;
+
     args.snap_mode = false;
     args.azimuth = 0.0;
     args.altitude = 0.0;
@@ -351,11 +359,12 @@ int main(int argc, char *argv[])
     unsigned long long clock = start;
     unsigned long long duration = (unsigned long long) (args.duration * 1000000);
 
+    const float PI = 3.14159265358979323846;
 
     if (args.snap_mode)
     {
-        float azimuth = 3.14159265358979323846 * args.azimuth / 180.0;
-        float altitude = 3.14159265358979323846 * args.altitude / 180.0;
+        float azimuth = PI * args.azimuth / 180.0;
+        float altitude = PI * args.altitude / 180.0;
         surface_draw_model(surface, model, azimuth, altitude);
 
         surface_print(stdout, surface);
@@ -377,7 +386,7 @@ int main(int argc, char *argv[])
             const float az_speed = 2.0;
             const float al_speed = 0.5;
             float azimuth = az_speed * time;
-            float altitude = 0.125 * 3.14159265358979323846 * (1 - sinf(0.5 * al_speed * time));
+            float altitude = (args.top_elevation ? 0.25 : 0.125) * PI * (1 - sinf(0.5 * al_speed * time));
 
             surface_draw_model(surface, model, azimuth, altitude);
 
