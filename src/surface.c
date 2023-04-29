@@ -2,12 +2,7 @@
 
 #include <assert.h>
 #include <ncurses.h>
-#include <stdbool.h>
 #include <stdlib.h>
-
-static const char LUM_OPTIONS[] = ".,':;!+*=#$@";
-static const int LUM_OPTIONS_COUNT = sizeof(LUM_OPTIONS) - 1;
-static const vec3 LIGHT_ORIGIN = {0.70710678118, -0.70710678118, 0.0}; // must be normalized!
 
 static float mini(float a, float b)
 {
@@ -23,44 +18,13 @@ static float maxi(float a, float b)
     return b;
 }
 
-static float cosine_similarity(vec3 a, vec3 b, float a_mag, float b_mag)
-{
-    return (a.x * b.x + a.y * b.y + a.z * b.z) / (a_mag * b_mag);
-}
-
-static char color_from_normal(vec3 normal)
-{
-    float sim = cosine_similarity(normal, LIGHT_ORIGIN, 1.0, 1.0) * 0.5 + 0.5;
-    unsigned int p = (unsigned int) roundf((LUM_OPTIONS_COUNT - 1) * sim);
-    return LUM_OPTIONS[p];
-}
-
-static bool triangle_orientation(const struct triangle *tri)
+static bool triangle_orientation(const triangle *tri)
 {
     return (tri->p2.x - tri->p1.x) * (tri->p3.y - tri->p2.y)
-            > (tri->p3.x - tri->p2.x) * (tri->p2.y - tri->p1.y);
+            < (tri->p3.x - tri->p2.x) * (tri->p2.y - tri->p1.y);
 }
 
-static vec3 triangle_normal(const struct triangle *tri)
-{
-    vec3 v1, v2, normal;
-
-    v1.x = tri->p3.x - tri->p1.x;
-    v1.y = tri->p3.y - tri->p1.y;
-    v1.z = tri->p3.z - tri->p1.z;
-
-    v2.x = tri->p2.x - tri->p1.x;
-    v2.y = tri->p2.y - tri->p1.y;
-    v2.z = tri->p2.z - tri->p1.z;
-
-    normal.x = v1.y * v2.z - v1.z * v2.y;
-    normal.y = v1.z * v2.x - v1.x * v2.z;
-    normal.z = v1.x * v2.y - v1.y * v2.x;
-
-    return vec3_normalize(normal);
-}
-
-static struct triangle triangle_sort_by_x(struct triangle triangle)
+static triangle triangle_sort_by_x(triangle triangle)
 {
     vec3 aux;
     for (unsigned int i = 0; i < 2; ++i)
@@ -113,7 +77,7 @@ void surface_clear(struct surface *surface)
 
     for (int i = 0; i < surface->size_y * surface->size_x; ++i)
     {
-        surface->pixels[i].color = ' ';
+        surface->pixels[i].c = ' ';
         surface->pixels[i].z = INFINITY;
     }
 }
@@ -136,7 +100,7 @@ static inline int idx_y(const struct surface *surface, float y)
     return maxi(0, mini(surface->size_y - 1, (int) floorf(y / dy)));
 }
 
-static inline float limit_y_1(const struct triangle *tri, float x)
+static inline float limit_y_1(const triangle *tri, float x)
 {
     if (x <= tri->p1.x)
         return tri->p1.y;
@@ -147,7 +111,7 @@ static inline float limit_y_1(const struct triangle *tri, float x)
     return tri->p2.y + (tri->p3.y - tri->p2.y) * (x - tri->p2.x) / (tri->p3.x - tri->p2.x);
 }
 
-static inline float limit_y_2(const struct triangle *tri, float x)
+static inline float limit_y_2(const triangle *tri, float x)
 {
     if (x <= tri->p1.x)
         return tri->p1.y;
@@ -156,7 +120,7 @@ static inline float limit_y_2(const struct triangle *tri, float x)
     return tri->p1.y + (tri->p3.y - tri->p1.y) * (x - tri->p1.x) / (tri->p3.x - tri->p1.x);
 }
 
-static inline float triangle_depth(const struct surface *surface, const struct triangle *tri,
+static inline float triangle_depth(const struct surface *surface, const triangle *tri,
         vec3 normal, int xx, int yy)
 {
     float dx = surface->dx;
@@ -168,18 +132,15 @@ static inline float triangle_depth(const struct surface *surface, const struct t
     return tri->p1.z - (normal.x * (x - tri->p1.x) + normal.y * (y - tri->p1.y)) / normal.z;
 }
 
-void surface_draw_triangle(struct surface *surface, struct triangle tri)
+void surface_draw_triangle(struct surface *surface, triangle tri, bool inverted_orientation,
+        char c)
 {
-    if (!triangle_orientation(&tri))
+    if (triangle_orientation(&tri) != !inverted_orientation)
         return;
 
     vec3 normal = triangle_normal(&tri);
 
     tri = triangle_sort_by_x(tri);
-
-    char color = tri.color;
-    if (!color)
-        color = color_from_normal(normal);
 
     float dx = surface->dx;
     float dy = surface->dy;
@@ -208,7 +169,7 @@ void surface_draw_triangle(struct surface *surface, struct triangle tri)
             if (depth < pix->z)
             {
                 pix->z = depth;
-                pix->color = color;
+                pix->c = c;
             }
         }
     }
@@ -220,7 +181,7 @@ void surface_print(FILE *fp, const struct surface *surface)
     {
         for (int xx = 0; xx < surface->size_x; ++xx)
         {
-            fprintf(fp, "%c", surface->pixels[yy * surface->size_x + xx].color);
+            fprintf(fp, "%c", surface->pixels[yy * surface->size_x + xx].c);
         }
         fprintf(fp, "\n");
     }
@@ -232,7 +193,7 @@ void surface_printw(const struct surface *surface)
     {
         for (int xx = 0; xx < surface->size_x; ++xx)
         {
-            printw("%c", surface->pixels[yy * surface->size_x + xx].color);
+            printw("%c", surface->pixels[yy * surface->size_x + xx].c);
         }
         printw("\n");
     }

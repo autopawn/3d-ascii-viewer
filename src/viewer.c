@@ -28,6 +28,7 @@ static void output_usage(int argc, char *argv[])
     printf("  -s                Stretch the model, regardless of the height/width ratio.\n");
     printf("                    for terminal characters.\n");
     printf("  -t                Allow the animation to reach maximum elevation.\n");
+    printf("  -l                Don't rotate the light with the model.\n");
     printf("\n");
     printf("  --snap <az> <al>  Output a single snap to stdout, with the given azimuth\n");
     printf("                    and altitude angles, in degrees.\n");
@@ -55,6 +56,7 @@ struct arguments
     float aspect_ratio;
     bool stretch;
     bool top_elevation;
+    bool static_light;
 
     bool snap_mode;
     float azimuth, altitude;
@@ -134,6 +136,10 @@ static void parse_arguments(int argc, char *argv[], struct arguments *args)
         else if (!strcmp(argv[i], "-t"))
         {
             args->top_elevation = true;
+        }
+        else if (!strcmp(argv[i], "-l"))
+        {
+            args->static_light = true;
         }
         else if (!strcmp(argv[i], "--snap"))
         {
@@ -216,32 +222,31 @@ static vec3 vec3_to_surface(const struct surface *surface, vec3 v)
     return v;
 }
 
-static vec3 vec3_rotate_y(float cos, float sin, vec3 v)
-{
-    float x = v.x * cos - v.z * sin;
-    float z = v.x * sin + v.z * cos;
-    v.x = x;
-    v.z = z;
-    return v;
-}
+static const char LUM_OPTIONS[] = ".,':;!+*=#$@";
+static const int LUM_OPTIONS_COUNT = sizeof(LUM_OPTIONS) - 1;
 
-static vec3 vec3_rotate_x(float cos, float sin, vec3 v)
+static char char_from_normal(vec3 normal, vec3 light_normal)
 {
-    float y = v.y * cos - v.z * sin;
-    float z = v.y * sin + v.z * cos;
-    v.y = y;
-    v.z = z;
-    return v;
+    float sim = vec3_cos_similarity(normal, light_normal, 1.0, 1.0) * 0.5 + 0.5;
+    int p = (int) roundf((LUM_OPTIONS_COUNT - 1) * sim);
+    if (p < 0)
+        p = 0;
+    if (p >= LUM_OPTIONS_COUNT)
+        p = LUM_OPTIONS_COUNT - 1;
+    return LUM_OPTIONS[p];
 }
 
 static void surface_draw_model(struct surface *surface, const struct model *model, float azimuth,
-        float altitude)
+        float altitude, bool static_light)
 {
-    float elev_cos = cosf(-altitude);
-    float elev_sin = sinf(-altitude);
+    float alt_cos = cosf(-altitude);
+    float alt_sin = sinf(-altitude);
 
     float az_cos = cosf(azimuth);
     float az_sin = sinf(azimuth);
+
+    vec3 light = (vec3){1, -1, static_light};
+    light = vec3_normalize(light);
 
     for (int f = 0; f < model->faces_count; ++f)
     {
@@ -253,20 +258,32 @@ static void surface_draw_model(struct surface *surface, const struct model *mode
         vec3 v2 = model->vertexes[i2];
         vec3 v3 = model->vertexes[i3];
 
-        v1 = vec3_rotate_y(az_cos, az_sin, v1);
-        v2 = vec3_rotate_y(az_cos, az_sin, v2);
-        v3 = vec3_rotate_y(az_cos, az_sin, v3);
+        triangle tri = {.p1 = v1, .p2 = v2, .p3 = v3};
 
-        v1 = vec3_rotate_x(elev_cos, elev_sin, v1);
-        v2 = vec3_rotate_x(elev_cos, elev_sin, v2);
-        v3 = vec3_rotate_x(elev_cos, elev_sin, v3);
+        tri.p1 = vec3_rotate_y(az_cos, az_sin, tri.p1);
+        tri.p2 = vec3_rotate_y(az_cos, az_sin, tri.p2);
+        tri.p3 = vec3_rotate_y(az_cos, az_sin, tri.p3);
 
-        struct triangle tri = {0};
-        tri.p1 = vec3_to_surface(surface, v1);
-        tri.p2 = vec3_to_surface(surface, v2);
-        tri.p3 = vec3_to_surface(surface, v3);
+        tri.p1 = vec3_rotate_x(alt_cos, alt_sin, tri.p1);
+        tri.p2 = vec3_rotate_x(alt_cos, alt_sin, tri.p2);
+        tri.p3 = vec3_rotate_x(alt_cos, alt_sin, tri.p3);
 
-        surface_draw_triangle(surface, tri);
+        tri.p1 = vec3_to_surface(surface, tri.p1);
+        tri.p2 = vec3_to_surface(surface, tri.p2);
+        tri.p3 = vec3_to_surface(surface, tri.p3);
+
+        char c;
+        if (static_light)
+        {
+            triangle tri_ini = {.p1 = v1, .p2 = v2, .p3 = v3};
+            c = char_from_normal(triangle_normal(&tri_ini), light);
+        }
+        if (!static_light)
+        {
+            c = char_from_normal(triangle_normal(&tri), light);
+        }
+
+        surface_draw_triangle(surface, tri, true, c);
     }
 }
 
@@ -300,6 +317,7 @@ int main(int argc, char *argv[])
     args.fps = 20;
     args.duration = 0;
     args.top_elevation = false;
+    args.static_light = false;
 
     args.snap_mode = false;
     args.azimuth = 0.0;
@@ -365,7 +383,7 @@ int main(int argc, char *argv[])
     {
         float azimuth = PI * args.azimuth / 180.0;
         float altitude = PI * args.altitude / 180.0;
-        surface_draw_model(surface, model, azimuth, altitude);
+        surface_draw_model(surface, model, azimuth, altitude, args.static_light);
 
         surface_print(stdout, surface);
     }
@@ -388,7 +406,7 @@ int main(int argc, char *argv[])
             float azimuth = az_speed * time;
             float altitude = (args.top_elevation ? 0.25 : 0.125) * PI * (1 - sinf(0.5 * al_speed * time));
 
-            surface_draw_model(surface, model, azimuth, altitude);
+            surface_draw_model(surface, model, azimuth, altitude, args.static_light);
 
             // Print surface
             move(0, 0);

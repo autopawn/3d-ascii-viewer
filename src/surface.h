@@ -3,11 +3,12 @@
 #include "trigonometry.h"
 
 #include <stdio.h>
+#include <stdbool.h>
 
 struct pixel
 {
     float z;
-    char color;
+    char c;
 };
 
 struct surface
@@ -30,7 +31,8 @@ void surface_free(struct surface *surface);
 
 void surface_clear(struct surface *surface);
 
-void surface_draw_triangle(struct surface *surface, struct triangle triangle);
+void surface_draw_triangle(struct surface *surface, triangle tri, bool inverted_orientation,
+        char c);
 
 void surface_print(FILE *fp, const struct surface *surface);
 
