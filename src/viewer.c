@@ -19,15 +19,19 @@ static void output_usage(int argc, char *argv[])
     printf("Usage: %s [OPTION...] INPUT_FILE\n", argv[0]);
     printf("%s -- %s\n", PROGRAM_NAME, PROGRAM_DESCRIPTION);
     printf("\n");
-    printf("  -w <size>      Output width in characters\n");
-    printf("  -h <size>      Output height in characters\n");
-    printf("  -d <seconds>   Stop the program after this many seconds.\n");
-    printf("  -f <frames>    Frames per second.\n");
-    printf("  -a <ratio>     Display assuming this height/width ratio for terminal\n");
-    printf("                 characters.\n");
-    printf("  -s             Stretch the model, regardless of the height/width ratio.\n");
-    printf("                 for terminal characters.\n");
-    printf("  -?, --help     Give this help list\n");
+    printf("  -w <size>         Output width in characters\n");
+    printf("  -h <size>         Output height in characters\n");
+    printf("  -d <seconds>      Stop the program after this many seconds.\n");
+    printf("  -f <frames>       Frames per second.\n");
+    printf("  -a <ratio>        Display assuming this height/width ratio for terminal\n");
+    printf("                    characters.\n");
+    printf("  -s                Stretch the model, regardless of the height/width ratio.\n");
+    printf("                    for terminal characters.\n");
+    printf("\n");
+    printf("  --snap <az> <al>  Output a single snap to stdout, with the given azimuth\n");
+    printf("                    and altitude angles, in degrees.\n");
+    printf("\n");
+    printf("  -?, --help        Give this help list\n");
     printf("\n");
 
     exit(1);
@@ -49,6 +53,9 @@ struct arguments
     float duration;
     float aspect_ratio;
     bool stretch;
+
+    bool snap_mode;
+    float azimuth, altitude;
 
     int arg_num;
     char *input_file;
@@ -121,6 +128,24 @@ static void parse_arguments(int argc, char *argv[], struct arguments *args)
         else if (!strcmp(argv[i], "-s"))
         {
             args->stretch = true;
+        }
+        else if (!strcmp(argv[i], "--snap"))
+        {
+            if (i >= argc - 2)
+                output_usage(argc, argv);
+            args->snap_mode = true;
+            args->azimuth = strtof(argv[++i], NULL);
+            if (errno || args->duration < 0)
+            {
+                fprintf(stderr, "ERROR: Invalid azimuth: %s\n", argv[i]);
+                exit(1);
+            }
+            args->altitude = strtof(argv[++i], NULL);
+            if (errno || args->duration < 0)
+            {
+                fprintf(stderr, "ERROR: Invalid altitude: %s\n", argv[i]);
+                exit(1);
+            }
         }
         else if (argv[i][0] == '-')
         {
@@ -203,10 +228,11 @@ static vec3 vec3_rotate_x(float cos, float sin, vec3 v)
     return v;
 }
 
-static void surface_draw_model(struct surface *surface, const struct model *model, float azimuth, float altitude)
+static void surface_draw_model(struct surface *surface, const struct model *model, float azimuth,
+        float altitude)
 {
-    float elev_cos = cosf(altitude);
-    float elev_sin = sinf(altitude);
+    float elev_cos = cosf(-altitude);
+    float elev_sin = sinf(-altitude);
 
     float az_cos = cosf(azimuth);
     float az_sin = sinf(azimuth);
@@ -242,7 +268,8 @@ static void compute_surface_logical_size(const struct model *model, float aspect
         unsigned int width, unsigned int height, float *out_x, float *out_y)
 {
     // Find width required by the model
-    // (height is assumed 1.0, because the model is normalized, and all azimuth and elevation rotations are considered).
+    // (height is assumed 1.0, because the model is normalized, and all azimuth and altitude
+    // rotations are considered).
     float required_y = 1.0;
     float required_x = 0.0;
     for (int i = 0; i < model->vertex_count; ++i)
@@ -283,6 +310,9 @@ int main(int argc, char *argv[])
     args.stretch = false;
     args.fps = 20;
     args.duration = 0;
+    args.snap_mode = false;
+    args.azimuth = 0.0;
+    args.altitude = 0.0;
 
     parse_arguments(argc, argv, &args);
 
@@ -318,37 +348,49 @@ int main(int argc, char *argv[])
     unsigned long long clock = start;
     unsigned long long duration = (unsigned long long) (args.duration * 1000000);
 
-    // Start curses mode
-    initscr();
-    noecho();
 
-    timeout(0);
-    int t = 0;
-    while (1)
+    if (args.snap_mode)
     {
-        surface_clear(surface);
-
-        float time = t * (frame_duration / 1000000.0);
-        float altitude = 0.125 * 3.14159265358979323846 * (sinf(0.5 * time) - 1);
-        float azimuth = 2.0 * time;
-
+        float azimuth = 3.14159265358979323846 * args.azimuth / 180.0;
+        float altitude = 3.14159265358979323846 * args.altitude / 180.0;
         surface_draw_model(surface, model, azimuth, altitude);
 
-        // Print surface
-        move(0, 0);
-        surface_printw(surface);
-        refresh();
-
-        if ((args.finite && clock - start >= duration) || getch() != ERR)
-            break;
-
-        tick(&clock, frame_duration);
-
-        t++;
+        surface_print(stdout, surface);
     }
+    else
+    {
+        // Start curses mode
+        initscr();
+        noecho();
 
-    // End curses mode
-    endwin();
+        timeout(0);
+        int t = 0;
+        while (1)
+        {
+            surface_clear(surface);
+
+            float time = t * (frame_duration / 1000000.0);
+            float azimuth = 2.0 * time;
+            float altitude = 0.125 * 3.14159265358979323846 * (1 - sinf(0.5 * time));
+
+            surface_draw_model(surface, model, azimuth, altitude);
+
+            // Print surface
+            move(0, 0);
+            surface_printw(surface);
+            refresh();
+
+            if ((args.finite && clock - start >= duration) || getch() != ERR)
+                break;
+
+            tick(&clock, frame_duration);
+
+            t++;
+        }
+
+        // End curses mode
+        endwin();
+    }
 
     // Free memory
     surface_free(surface);
