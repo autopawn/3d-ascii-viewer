@@ -191,10 +191,10 @@ void surface_printw(const struct surface *surface)
 {
     for (int yy = 0; yy < surface->size_y; ++yy)
     {
+        move(yy, 0);
         for (int xx = 0; xx < surface->size_x; ++xx)
         {
             printw("%c", surface->pixels[yy * surface->size_x + xx].c);
         }
-        printw("\n");
     }
 }
