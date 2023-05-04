@@ -317,6 +317,49 @@ static float model_xz_rad(const struct model *model)
     return rad;
 }
 
+static struct surface *create_surface(const struct model *model, int arg_surface_w, int arg_surface_h,
+        float char_aspect_ratio, bool stretch)
+{
+    // Logical size required by the model
+    float required_y = 1.0;
+    float required_x = model_xz_rad(model);
+    // Surface logical size
+    float surface_size_x, surface_size_y;
+    // Surface size in characters
+    int surface_w, surface_h;
+
+    // User provided arguments override screen size given by ncurses
+    getmaxyx(stdscr, surface_h, surface_w);
+    if (arg_surface_h)
+        surface_h = arg_surface_h;
+    if (arg_surface_w)
+        surface_w = arg_surface_w;
+
+    if (stretch)
+    {
+        surface_size_x = required_x;
+        surface_size_y = required_y;
+    }
+    else
+    {
+        // Screen width / height
+        float screen_aspect_rel = surface_w / (surface_h * char_aspect_ratio);
+
+        if (screen_aspect_rel * required_y >= 1.0 * required_x)
+        {
+            surface_size_x = required_y * screen_aspect_rel;
+            surface_size_y = required_y;
+        }
+        else
+        {
+            surface_size_x = required_x;
+            surface_size_y = required_x / screen_aspect_rel;
+        }
+    }
+
+    return surface_init(surface_w, surface_h, surface_size_x, surface_size_y);
+}
+
 int main(int argc, char *argv[])
 {
     if (argc == 1)
@@ -325,8 +368,8 @@ int main(int argc, char *argv[])
     // Argument default values
     struct arguments args = {0};
     args.input_file = NULL;
-    args.surface_width = 80;
-    args.surface_height = 40;
+    args.surface_width = 0;
+    args.surface_height = 0;
     args.aspect_ratio = 1.8;
     args.stretch = false;
     args.fps = 20;
@@ -357,34 +400,11 @@ int main(int argc, char *argv[])
     }
     model_normalize(model, true);
 
-    float required_y = 1.0;
-    float required_x = model_xz_rad(model);
-    float surface_size_x, surface_size_y;
-
-    if (args.stretch)
-    {
-        surface_size_x = required_x;
-        surface_size_y = required_y;
-    }
-    else
-    {
-        // Screen width / height
-        float screen_aspect_rel = args.surface_width / (args.surface_height * args.aspect_ratio);
-
-        if (screen_aspect_rel * required_y >= 1.0 * required_x)
-        {
-            surface_size_x = required_y * screen_aspect_rel;
-            surface_size_y = required_y;
-        }
-        else
-        {
-            surface_size_x = required_x;
-            surface_size_y = required_x / screen_aspect_rel;
-        }
-    }
-
-    struct surface *surface = surface_init(args.surface_width, args.surface_height,
-            surface_size_x, surface_size_y);
+    // Starting curses is required to get the screen size
+    struct surface *surface;
+    initscr();
+    surface = create_surface(model, args.surface_width, args.surface_height, args.aspect_ratio, args.stretch);
+    endwin(); // End curses mode
     if (!surface)
         return 1;
 
@@ -404,7 +424,6 @@ int main(int argc, char *argv[])
     }
     else if (args.interactive)
     {
-        // Start curses mode
         initscr();
         noecho();
         curs_set(0);
@@ -435,6 +454,14 @@ int main(int argc, char *argv[])
 
             int key = getch();
 
+            if (key == KEY_RESIZE)
+            {
+                surface_free(surface);
+                surface = create_surface(model, args.surface_width, args.surface_height, args.aspect_ratio, args.stretch);
+                if (!surface)
+                    return 1;
+            }
+
             if (key == 'q')
                 break;
             if (key == 'h' || key == KEY_LEFT)
@@ -457,12 +484,10 @@ int main(int argc, char *argv[])
                 altitude_deg = -90;
         }
 
-        // End curses mode
         endwin();
     }
     else
     {
-        // Start curses mode
         initscr();
         noecho();
         curs_set(0);
@@ -487,15 +512,27 @@ int main(int argc, char *argv[])
             surface_printw(surface);
             refresh();
 
-            if ((args.finite && clock - start >= duration) || getch() != ERR)
+            if ((args.finite && clock - start >= duration))
                 break;
+
+            int key = getch();
+            if (key == KEY_RESIZE)
+            {
+                surface_free(surface);
+                surface = create_surface(model, args.surface_width, args.surface_height, args.aspect_ratio, args.stretch);
+                if (!surface)
+                    return 1;
+            }
+            else if (key != ERR)
+            {
+                break;
+            }
 
             tick(&clock, frame_duration);
 
             t++;
         }
 
-        // End curses mode
         endwin();
     }
 
