@@ -52,6 +52,14 @@ static inline vec3 vec3_rotate_x(float cos, float sin, vec3 v)
     return v;
 }
 
+static inline vec3 vec3_neg(vec3 v)
+{
+    v.x = -v.x;
+    v.y = -v.y;
+    v.z = -v.z;
+    return v;
+}
+
 static inline float vec3_cos_similarity(vec3 a, vec3 b, float a_mag, float b_mag)
 {
     return (a.x * b.x + a.y * b.y + a.z * b.z) / (a_mag * b_mag);
@@ -61,13 +69,13 @@ static inline vec3 triangle_normal(const triangle *tri)
 {
     vec3 v1, v2, normal;
 
-    v1.x = tri->p3.x - tri->p1.x;
-    v1.y = tri->p3.y - tri->p1.y;
-    v1.z = tri->p3.z - tri->p1.z;
+    v1.x = tri->p2.x - tri->p1.x;
+    v1.y = tri->p2.y - tri->p1.y;
+    v1.z = tri->p2.z - tri->p1.z;
 
-    v2.x = tri->p2.x - tri->p1.x;
-    v2.y = tri->p2.y - tri->p1.y;
-    v2.z = tri->p2.z - tri->p1.z;
+    v2.x = tri->p3.x - tri->p1.x;
+    v2.y = tri->p3.y - tri->p1.y;
+    v2.z = tri->p3.z - tri->p1.z;
 
     normal.x = v1.y * v2.z - v1.z * v2.y;
     normal.y = v1.z * v2.x - v1.x * v2.z;

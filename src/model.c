@@ -127,7 +127,17 @@ void model_bounding_box(const struct model *model, vec3 *minp, vec3 *maxp)
     *maxp = max;
 }
 
-void model_normalize(struct model *model)
+void model_invert_triangles(struct model *model)
+{
+    for (int f = 0; f < model->faces_count; ++f)
+    {
+        int aux = model->idxs[3 * f + 1];
+        model->idxs[3 * f + 1] = model->idxs[3 * f + 2];
+        model->idxs[3 * f + 2] = aux;
+    }
+}
+
+void model_normalize(struct model *model, bool invert_z)
 {
     vec3 min, max, center;
 
@@ -159,7 +169,12 @@ void model_normalize(struct model *model)
         model->vertexes[i].x *= scale;
         model->vertexes[i].y *= scale;
         model->vertexes[i].z *= scale;
+        if (invert_z)
+            model->vertexes[i].z *= -1;
     }
+
+    if (invert_z)
+        model_invert_triangles(model);
 }
 
 void model_free(struct model *model)

@@ -256,7 +256,7 @@ static void surface_draw_model(struct surface *surface, const struct model *mode
     float az_cos = cosf(azimuth);
     float az_sin = sinf(azimuth);
 
-    vec3 light = static_light ? (vec3){0.75, -1.0, 0.5} : (vec3){1, -1, 0};
+    vec3 light = static_light ? (vec3){0.75, -1.0, -0.5} : (vec3){1, -1, 0};
     light = vec3_normalize(light);
 
     for (int f = 0; f < model->faces_count; ++f)
@@ -291,11 +291,11 @@ static void surface_draw_model(struct surface *surface, const struct model *mode
             tri_ini.p2 = vec3_to_surface(surface, tri_ini.p2);
             tri_ini.p3 = vec3_to_surface(surface, tri_ini.p3);
 
-            c = char_from_normal(triangle_normal(&tri_ini), light);
+            c = char_from_normal(vec3_neg(triangle_normal(&tri_ini)), light);
         }
         else
         {
-            c = char_from_normal(triangle_normal(&tri), light);
+            c = char_from_normal(vec3_neg(triangle_normal(&tri)), light);
         }
 
         surface_draw_triangle(surface, tri, true, c);
@@ -355,7 +355,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "ERROR: Could not read model faces.\n");
         exit(1);
     }
-    model_normalize(model);
+    model_normalize(model, true);
 
     float required_y = 1.0;
     float required_x = model_xz_rad(model);
