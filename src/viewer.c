@@ -9,6 +9,7 @@
 #include <time.h>
 #include <unistd.h>
 
+static char *DEFAULT_LUM_OPTIONS = ".,':;!+*=#$@";
 static const float PI = 3.1415926536;
 static const float GOLDEN_RATIO = 1.6180339887;
 
@@ -28,6 +29,8 @@ static void output_usage(int argc, char *argv[])
     printf("  -f <frames>       Frames per second.\n");
     printf("  -a <ratio>        Display assuming this height/width ratio for terminal\n");
     printf("                    characters.\n");
+    printf("  -c <chars>        Provide alternate luminescence characters (from less to\n");
+    printf("                    more light).\n");
     printf("  -s                Stretch the model, regardless of the height/width ratio.\n");
     printf("                    for terminal characters.\n");
     printf("  -t                Allow the animation to reach maximum elevation.\n");
@@ -62,6 +65,7 @@ struct arguments
     bool stretch;
     bool top_elevation;
     bool static_light;
+    char *lum_chars;
 
     bool snap_mode;
     float azimuth, altitude;
@@ -133,6 +137,17 @@ static void parse_arguments(int argc, char *argv[], struct arguments *args)
             if (errno || args->aspect_ratio <= 0)
             {
                 fprintf(stderr, "ERROR: Invalid aspect-ratio: %s\n", argv[i]);
+                exit(1);
+            }
+        }
+        else if (!strcmp(argv[i], "-c"))
+        {
+            if (i >= argc - 1)
+                output_usage(argc, argv);
+            args->lum_chars = argv[++i];
+            if (args->lum_chars[0] == '\0')
+            {
+                fprintf(stderr, "ERROR: At least one luminescence character must be provided.\n");
                 exit(1);
             }
         }
@@ -233,23 +248,22 @@ static vec3 vec3_to_surface(const struct surface *surface, vec3 v)
     return v;
 }
 
-static const char LUM_OPTIONS[] = ".,':;!+*=#$@";
-static const int LUM_OPTIONS_COUNT = sizeof(LUM_OPTIONS) - 1;
-
-static char char_from_normal(vec3 normal, vec3 light_normal)
+static char char_from_normal(vec3 normal, vec3 light_normal, const char *lum_chars, int lum_count)
 {
     float sim = vec3_cos_similarity(normal, light_normal, 1.0, 1.0) * 0.5 + 0.5;
-    int p = (int) roundf((LUM_OPTIONS_COUNT - 1) * sim);
+    int p = (int) roundf((lum_count - 1) * sim);
     if (p < 0)
         p = 0;
-    if (p >= LUM_OPTIONS_COUNT)
-        p = LUM_OPTIONS_COUNT - 1;
-    return LUM_OPTIONS[p];
+    if (p >= lum_count)
+        p = lum_count - 1;
+    return lum_chars[p];
 }
 
 static void surface_draw_model(struct surface *surface, const struct model *model, float azimuth,
-        float altitude, bool static_light)
+        float altitude, bool static_light, const char *lum_chars)
 {
+    int lum_count = strlen(lum_chars);
+
     float alt_cos = cosf(-altitude);
     float alt_sin = sinf(-altitude);
 
@@ -291,11 +305,11 @@ static void surface_draw_model(struct surface *surface, const struct model *mode
             tri_ini.p2 = vec3_to_surface(surface, tri_ini.p2);
             tri_ini.p3 = vec3_to_surface(surface, tri_ini.p3);
 
-            c = char_from_normal(vec3_neg(triangle_normal(&tri_ini)), light);
+            c = char_from_normal(vec3_neg(triangle_normal(&tri_ini)), light, lum_chars, lum_count);
         }
         else
         {
-            c = char_from_normal(vec3_neg(triangle_normal(&tri)), light);
+            c = char_from_normal(vec3_neg(triangle_normal(&tri)), light, lum_chars, lum_count);
         }
 
         surface_draw_triangle(surface, tri, true, c);
@@ -376,6 +390,7 @@ int main(int argc, char *argv[])
     args.duration = 0;
     args.top_elevation = false;
     args.static_light = false;
+    args.lum_chars = DEFAULT_LUM_OPTIONS;
 
     args.snap_mode = false;
     args.azimuth = 0.0;
@@ -418,7 +433,7 @@ int main(int argc, char *argv[])
     {
         float azimuth = PI * args.azimuth / 180.0;
         float altitude = PI * args.altitude / 180.0;
-        surface_draw_model(surface, model, azimuth, altitude, args.static_light);
+        surface_draw_model(surface, model, azimuth, altitude, args.static_light, args.lum_chars);
 
         surface_print(stdout, surface);
     }
@@ -441,7 +456,7 @@ int main(int argc, char *argv[])
             float azimuth = PI * azimuth_deg / 180;
             float altitude = PI * altitude_deg / 180;
 
-            surface_draw_model(surface, model, azimuth, altitude, args.static_light);
+            surface_draw_model(surface, model, azimuth, altitude, args.static_light, args.lum_chars);
 
             // Print surface
             move(0, 0);
@@ -457,7 +472,8 @@ int main(int argc, char *argv[])
             if (key == KEY_RESIZE)
             {
                 surface_free(surface);
-                surface = create_surface(model, args.surface_width, args.surface_height, args.aspect_ratio, args.stretch);
+                surface = create_surface(model, args.surface_width, args.surface_height,
+                        args.aspect_ratio, args.stretch);
                 if (!surface)
                     return 1;
             }
@@ -505,7 +521,7 @@ int main(int argc, char *argv[])
             float azimuth = az_speed * time;
             float altitude = (args.top_elevation ? 0.25 : 0.125) * PI * (1 - sinf(al_speed * time));
 
-            surface_draw_model(surface, model, azimuth, altitude, args.static_light);
+            surface_draw_model(surface, model, azimuth, altitude, args.static_light, args.lum_chars);
 
             // Print surface
             move(0, 0);
