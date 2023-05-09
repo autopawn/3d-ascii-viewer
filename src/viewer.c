@@ -13,9 +13,13 @@ static char *DEFAULT_LUM_OPTIONS = ".,':;!+*=#$@";
 static const float PI = 3.1415926536;
 static const float GOLDEN_RATIO = 1.6180339887;
 
+static const float INTERACTIVE_ZOOM_MIN = 5;
+static const float INTERACTIVE_ZOOM_MAX = 1000;
+
 // Program description
 static const char *PROGRAM_NAME = "3d-ascii-viewer";
 static const char *PROGRAM_DESCRIPTION = "an OBJ 3D model format viewer for the terminal";
+
 
 // Program documentation.
 static void output_usage(int argc, char *argv[])
@@ -35,6 +39,7 @@ static void output_usage(int argc, char *argv[])
     printf("                    for terminal characters.\n");
     printf("  -t                Allow the animation to reach maximum elevation.\n");
     printf("  -l                Don't rotate the light with the model.\n");
+    printf("  -z <zoom>         Change zoom level (default: 100).\n");
     printf("\n");
     printf("  --snap <az> <al>  Output a single snap to stdout, with the given azimuth\n");
     printf("                    and altitude angles, in degrees.\n");
@@ -69,6 +74,7 @@ struct arguments
 
     bool snap_mode;
     float azimuth, altitude;
+    float zoom;
 
     bool interactive;
 
@@ -163,6 +169,17 @@ static void parse_arguments(int argc, char *argv[], struct arguments *args)
         {
             args->static_light = true;
         }
+        else if (!strcmp(argv[i], "-z"))
+        {
+            if (i >= argc - 1)
+                output_usage(argc, argv);
+            args->zoom = strtof(argv[++i], NULL);
+            if (errno || args->zoom <= 0)
+            {
+                fprintf(stderr, "ERROR: Invalid zoom: %s\n", argv[i]);
+                exit(1);
+            }
+        }
         else if (!strcmp(argv[i], "--snap"))
         {
             if (i >= argc - 2)
@@ -240,11 +257,11 @@ static void tick(unsigned long long *last_target, unsigned long long frame_durat
 }
 
 // Translate from the [-1,1]^3 cube to the screen surface.
-static vec3 vec3_to_surface(const struct surface *surface, vec3 v)
+static vec3 vec3_to_surface(const struct surface *surface, vec3 v, float zoom)
 {
-    v.x = 0.5 * surface->logical_size_x + 0.5 * v.x;
-    v.y = 0.5 * surface->logical_size_y - 0.5 * v.y;
-    v.z = 0.5 + 0.5 * v.z;
+    v.x = 0.5 * surface->logical_size_x + 0.5 * v.x * zoom;
+    v.y = 0.5 * surface->logical_size_y - 0.5 * v.y * zoom;
+    v.z = 0.5 + 0.5 * v.z * zoom;
     return v;
 }
 
@@ -260,7 +277,7 @@ static char char_from_normal(vec3 normal, vec3 light_normal, const char *lum_cha
 }
 
 static void surface_draw_model(struct surface *surface, const struct model *model, float azimuth,
-        float altitude, bool static_light, const char *lum_chars)
+        float altitude, float zoom, bool static_light, const char *lum_chars)
 {
     int lum_count = strlen(lum_chars);
 
@@ -293,17 +310,17 @@ static void surface_draw_model(struct surface *surface, const struct model *mode
         tri.p2 = vec3_rotate_x(alt_cos, alt_sin, tri.p2);
         tri.p3 = vec3_rotate_x(alt_cos, alt_sin, tri.p3);
 
-        tri.p1 = vec3_to_surface(surface, tri.p1);
-        tri.p2 = vec3_to_surface(surface, tri.p2);
-        tri.p3 = vec3_to_surface(surface, tri.p3);
+        tri.p1 = vec3_to_surface(surface, tri.p1, zoom);
+        tri.p2 = vec3_to_surface(surface, tri.p2, zoom);
+        tri.p3 = vec3_to_surface(surface, tri.p3, zoom);
 
         char c;
         if (static_light)
         {
             triangle tri_ini = {.p1 = v1, .p2 = v2, .p3 = v3};
-            tri_ini.p1 = vec3_to_surface(surface, tri_ini.p1);
-            tri_ini.p2 = vec3_to_surface(surface, tri_ini.p2);
-            tri_ini.p3 = vec3_to_surface(surface, tri_ini.p3);
+            tri_ini.p1 = vec3_to_surface(surface, tri_ini.p1, zoom);
+            tri_ini.p2 = vec3_to_surface(surface, tri_ini.p2, zoom);
+            tri_ini.p3 = vec3_to_surface(surface, tri_ini.p3, zoom);
 
             c = char_from_normal(vec3_neg(triangle_normal(&tri_ini)), light, lum_chars, lum_count);
         }
@@ -391,6 +408,7 @@ int main(int argc, char *argv[])
     args.top_elevation = false;
     args.static_light = false;
     args.lum_chars = DEFAULT_LUM_OPTIONS;
+    args.zoom = 100;
 
     args.snap_mode = false;
     args.azimuth = 0.0;
@@ -433,7 +451,8 @@ int main(int argc, char *argv[])
     {
         float azimuth = PI * args.azimuth / 180.0;
         float altitude = PI * args.altitude / 180.0;
-        surface_draw_model(surface, model, azimuth, altitude, args.static_light, args.lum_chars);
+        float zoom = args.zoom / 100.0;
+        surface_draw_model(surface, model, azimuth, altitude, zoom, args.static_light, args.lum_chars);
 
         surface_print(stdout, surface);
     }
@@ -448,6 +467,7 @@ int main(int argc, char *argv[])
         const float angle_move = 15.0;
         float azimuth_deg = 0.0;
         float altitude_deg = 0.0;
+        float zoom = args.zoom;
 
         while (1)
         {
@@ -456,14 +476,17 @@ int main(int argc, char *argv[])
             float azimuth = PI * azimuth_deg / 180;
             float altitude = PI * altitude_deg / 180;
 
-            surface_draw_model(surface, model, azimuth, altitude, args.static_light, args.lum_chars);
+            surface_draw_model(surface, model, azimuth, altitude, zoom / 100.0,
+                    args.static_light, args.lum_chars);
 
             // Print surface
             move(0, 0);
             surface_printw(surface);
             move(0, 0);
-            printw("az: %3.0f", azimuth_deg);
+            printw("zo:%4.0f", zoom);
             move(1, 0);
+            printw("az: %3.0f", azimuth_deg);
+            move(2, 0);
             printw("al: %3.0f", altitude_deg);
             refresh();
 
@@ -488,6 +511,10 @@ int main(int argc, char *argv[])
                 altitude_deg -= angle_move;
             if (key == 'k' || key == KEY_UP)
                 altitude_deg += angle_move;
+            if (key == '-' || key == 'a')
+                zoom -= 5;
+            if (key == '+' || key == 's')
+                zoom += 5;
 
             if (azimuth_deg < 0)
                 azimuth_deg += 360;
@@ -498,6 +525,11 @@ int main(int argc, char *argv[])
                 altitude_deg = 90;
             if (altitude_deg < -90)
                 altitude_deg = -90;
+
+            if (zoom > INTERACTIVE_ZOOM_MAX)
+                zoom = INTERACTIVE_ZOOM_MAX;
+            if (zoom < INTERACTIVE_ZOOM_MIN)
+                zoom = INTERACTIVE_ZOOM_MIN;
         }
 
         endwin();
@@ -520,8 +552,9 @@ int main(int argc, char *argv[])
             const float al_speed = GOLDEN_RATIO * 0.25;
             float azimuth = az_speed * time;
             float altitude = (args.top_elevation ? 0.25 : 0.125) * PI * (1 - sinf(al_speed * time));
+            float zoom = args.zoom / 100.0;
 
-            surface_draw_model(surface, model, azimuth, altitude, args.static_light, args.lum_chars);
+            surface_draw_model(surface, model, azimuth, altitude, zoom, args.static_light, args.lum_chars);
 
             // Print surface
             move(0, 0);

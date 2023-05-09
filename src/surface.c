@@ -145,8 +145,14 @@ void surface_draw_triangle(struct surface *surface, triangle tri, bool inverted_
     float dx = surface->dx;
     float dy = surface->dy;
 
-    int xxi = idx_x(surface, tri.p1.x + dx / 2.0);
-    int xxf = idx_x(surface, tri.p3.x - dx / 2.0);
+    float xi = tri.p1.x + dx / 2.0;
+    float xf = tri.p3.x - dx / 2.0;
+
+    if (xf < 0 || xi > surface->logical_size_x)
+        return;
+
+    int xxi = idx_x(surface, xi);
+    int xxf = idx_x(surface, xf);
 
     for (int xx = xxi; xx <= xxf; ++xx)
     {
@@ -156,6 +162,9 @@ void surface_draw_triangle(struct surface *surface, triangle tri, bool inverted_
 
         float yi = mini(y_1, y_2);
         float yf = maxi(y_1, y_2);
+
+        if (yf < 0 || yi > surface->logical_size_y)
+            continue;
 
         int yyi = idx_y(surface, yi + dy / 2.0);
         int yyf = idx_y(surface, yf - dy / 2.0);
