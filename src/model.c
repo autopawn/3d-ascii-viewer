@@ -11,7 +11,7 @@ static struct model *model_init(void)
     struct model *model = malloc(sizeof(*model));
 
     model->faces_capacity = 1;
-    if (!(model->idxs = malloc(model->faces_capacity * 3 * sizeof(*model->idxs))))
+    if (!(model->faces = malloc(model->faces_capacity * sizeof(*model->faces))))
     {
         fprintf(stderr, "ERROR: Memory allocation failure.\n");
         exit(1);
@@ -63,13 +63,16 @@ static bool model_validate_idxs(struct model *model)
 {
     bool valid = true;
 
-    for (int i = 0; i < 3 * model->faces_count; ++i)
+    for (int f = 0; f < model->faces_count; ++f)
     {
-        if (model->idxs[i] >= model->vertex_count)
+        for (int i = 0; i < 3; ++i)
         {
-            fprintf(stderr, "WARN: Invalid vertex index %d.\n", model->idxs[i]);
-            valid = false;
-            model->idxs[i] = 0;
+            if (model->faces[f].idxs[i] >= model->vertex_count)
+            {
+                fprintf(stderr, "WARN: Invalid vertex index %d.\n", model->faces[f].idxs[i]);
+                valid = false;
+                model->faces[f].idxs[i] = 0;
+            }
         }
     }
     return valid;
@@ -80,15 +83,15 @@ static void model_add_face(struct model *model, int idx1, int idx2, int idx3)
     if (model->faces_count == model->faces_capacity)
     {
         model->faces_capacity *= 2;
-        if (!(model->idxs = realloc(model->idxs, 3 * model->faces_capacity * sizeof(*model->idxs))))
+        if (!(model->faces = realloc(model->faces, model->faces_capacity * sizeof(*model->faces))))
         {
             fprintf(stderr, "ERROR: Memory allocation failure.\n");
             exit(1);
         }
     }
-    model->idxs[3 * model->faces_count + 0] = relativize_idx(idx1, model->vertex_count);
-    model->idxs[3 * model->faces_count + 1] = relativize_idx(idx2, model->vertex_count);
-    model->idxs[3 * model->faces_count + 2] = relativize_idx(idx3, model->vertex_count);
+    model->faces[model->faces_count].idxs[0] = relativize_idx(idx1, model->vertex_count);
+    model->faces[model->faces_count].idxs[1] = relativize_idx(idx2, model->vertex_count);
+    model->faces[model->faces_count].idxs[2] = relativize_idx(idx3, model->vertex_count);
 
     model->faces_count++;
 }
@@ -131,9 +134,9 @@ void model_invert_triangles(struct model *model)
 {
     for (int f = 0; f < model->faces_count; ++f)
     {
-        int aux = model->idxs[3 * f + 1];
-        model->idxs[3 * f + 1] = model->idxs[3 * f + 2];
-        model->idxs[3 * f + 2] = aux;
+        int aux = model->faces[f].idxs[1];
+        model->faces[f].idxs[1] = model->faces[f].idxs[2];
+        model->faces[f].idxs[2] = aux;
     }
 }
 
@@ -180,7 +183,7 @@ void model_normalize(struct model *model, bool invert_z)
 void model_free(struct model *model)
 {
     free(model->vertexes);
-    free(model->idxs);
+    free(model->faces);
     free(model);
 }
 

@@ -275,9 +275,9 @@ static void surface_draw_model(struct surface *surface, const struct model *mode
 
     for (int f = 0; f < model->faces_count; ++f)
     {
-        int i1 = model->idxs[3 * f + 0];
-        int i2 = model->idxs[3 * f + 1];
-        int i3 = model->idxs[3 * f + 2];
+        int i1 = model->faces[f].idxs[0];
+        int i2 = model->faces[f].idxs[1];
+        int i3 = model->faces[f].idxs[2];
 
         vec3 v1 = model->vertexes[i1];
         vec3 v2 = model->vertexes[i2];

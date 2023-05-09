@@ -4,6 +4,11 @@
 
 #include <stdbool.h>
 
+struct face
+{
+    unsigned int idxs[3];
+};
+
 struct model
 {
     unsigned int vertex_count;
@@ -12,7 +17,7 @@ struct model
 
     unsigned int faces_count;
     unsigned int faces_capacity;
-    unsigned int *idxs;
+    struct face *faces;
 };
 
 struct model *model_load_from_obj(const char *fname);
