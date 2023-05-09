@@ -493,11 +493,47 @@ int main(int argc, char *argv[])
 
     parse_arguments(argc, argv, &args);
 
-    struct model *model;
+    struct model *model = NULL;
+    char *file_ext = strrchr(args.input_file, '.');
 
-    if (!(model = model_load_from_obj(args.input_file, args.color_support)))
+    if (file_ext)
+    {
+        if (strcasecmp(file_ext, ".obj") == 0)
+        {
+            model = model_load_from_obj(args.input_file, args.color_support);
+        }
+        else if (strcasecmp(file_ext, ".ply") == 0)
+        {
+            model = model_load_from_ply(args.input_file);
+
+            if (args.color_support)
+            {
+                fprintf(stderr, "WARN: Colors for PLY format not supported.\n");
+            }
+        }
+        else if (strcasecmp(file_ext, ".mtl") == 0)
+        {
+            fprintf(stderr, "ERROR: The companion MTL file should not be passed as argument.\n");
+            fprintf(stderr, "       It must be referenced inside the OBJ.\n");
+            exit(1);
+        }
+        else
+        {
+            fprintf(stderr, "ERROR: Unrecognized file extension \"%s\".\n", file_ext);
+            exit(1);
+        }
+    }
+    else
+    {
+        fprintf(stderr, "ERROR: Expected an extension on input file \"%s\".\n", args.input_file);
+        exit(1);
+    }
+
+    if (!model)
         return 1;
-    model_invert_z(model); // Required by the OBJ format.
+
+    if (strcasecmp(file_ext, ".obj") == 0)
+        model_invert_z(model);
 
     if (model->vertex_count == 0)
     {
