@@ -45,6 +45,8 @@ static void output_usage(int argc, char *argv[])
     printf("                    and altitude angles, in degrees.\n");
     printf("\n");
     printf("  --interactive     Manually rotate the camera.\n");
+    printf("                    Controls: ARROW KEYS, '-', '+'\n");
+    printf("                    Alt-controls: H, J, K, L, A, S\n");
     printf("\n");
     printf("  -?, --help        Give this help list\n");
     printf("\n");
