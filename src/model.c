@@ -45,7 +45,7 @@ static void model_add_vertex(struct model *model, vec3 vec)
     model->vertex_count++;
 }
 
-static int relativize_idx(int i, int n)
+static int obj_derelativize_idx(int i, int n)
 {
     if (i < -n || i == 0)
     {
@@ -89,9 +89,9 @@ static void model_add_face(struct model *model, int idx1, int idx2, int idx3)
             exit(1);
         }
     }
-    model->faces[model->faces_count].idxs[0] = relativize_idx(idx1, model->vertex_count);
-    model->faces[model->faces_count].idxs[1] = relativize_idx(idx2, model->vertex_count);
-    model->faces[model->faces_count].idxs[2] = relativize_idx(idx3, model->vertex_count);
+    model->faces[model->faces_count].idxs[0] = idx1;
+    model->faces[model->faces_count].idxs[1] = idx2;
+    model->faces[model->faces_count].idxs[2] = idx3;
 
     model->faces_count++;
 }
@@ -321,7 +321,13 @@ struct model *model_load_from_obj(const char *fname)
 
             while (parse_int(&bufferp, &i3))
             {
-                model_add_face(model, i1, i2, i3);
+                int i1d, i2d, i3d;
+
+                i1d = obj_derelativize_idx(i1, model->vertex_count);
+                i2d = obj_derelativize_idx(i2, model->vertex_count);
+                i3d = obj_derelativize_idx(i3, model->vertex_count);
+
+                model_add_face(model, i1d, i2d, i3d);
                 // Shift for possible new triangular face
                 i2 = i3;
             }
