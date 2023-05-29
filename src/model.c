@@ -175,6 +175,20 @@ void model_normalize(struct model *model)
     }
 }
 
+void model_invert_x(struct model *model)
+{
+    for (int i = 0; i < model->vertex_count; ++i)
+            model->vertexes[i].x *= -1;
+    model_invert_triangles(model);
+}
+
+void model_invert_y(struct model *model)
+{
+    for (int i = 0; i < model->vertex_count; ++i)
+            model->vertexes[i].y *= -1;
+    model_invert_triangles(model);
+}
+
 void model_invert_z(struct model *model)
 {
     for (int i = 0; i < model->vertex_count; ++i)

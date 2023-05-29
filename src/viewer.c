@@ -39,6 +39,7 @@ static void output_usage(int argc, char *argv[])
     printf("                    for terminal characters.\n");
     printf("  -t                Allow the animation to reach maximum elevation.\n");
     printf("  -l                Don't rotate the light with the model.\n");
+    printf("  -X, -Y, -Z        Invert respective axes.\n");
     printf("  -z <zoom>         Change zoom level (default: 100).\n");
     printf("\n");
     printf("  --snap <az> <al>  Output a single snap to stdout, with the given azimuth\n");
@@ -73,6 +74,7 @@ struct arguments
     bool top_elevation;
     bool static_light;
     char *lum_chars;
+    bool invert_x, invert_y, invert_z;
 
     bool snap_mode;
     float azimuth, altitude;
@@ -170,6 +172,18 @@ static void parse_arguments(int argc, char *argv[], struct arguments *args)
         else if (!strcmp(argv[i], "-l"))
         {
             args->static_light = true;
+        }
+        else if (!strcmp(argv[i], "-X"))
+        {
+            args->invert_x = true;
+        }
+        else if (!strcmp(argv[i], "-Y"))
+        {
+            args->invert_y = true;
+        }
+        else if (!strcmp(argv[i], "-Z"))
+        {
+            args->invert_z = true;
         }
         else if (!strcmp(argv[i], "-z"))
         {
@@ -437,6 +451,14 @@ int main(int argc, char *argv[])
         exit(1);
     }
     model_normalize(model);
+
+    // Invert axes as required by the options
+    if (args.invert_x)
+        model_invert_x(model);
+    if (args.invert_y)
+        model_invert_y(model);
+    if (args.invert_z)
+        model_invert_z(model);
 
     // Starting curses is required to get the screen size
     struct surface *surface;

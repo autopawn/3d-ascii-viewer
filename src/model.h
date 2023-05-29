@@ -29,6 +29,8 @@ void model_invert_triangles(struct model *model);
 // Scale the model so that it fits in the [-1, 1]^3 cube with any rotation.
 void model_normalize(struct model *model);
 
+void model_invert_x(struct model *model);
+void model_invert_y(struct model *model);
 void model_invert_z(struct model *model);
 
 void model_free(struct model *model);
