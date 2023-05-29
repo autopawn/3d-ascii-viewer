@@ -420,9 +420,12 @@ int main(int argc, char *argv[])
 
     parse_arguments(argc, argv, &args);
 
-    struct model *model = model_load_from_obj(args.input_file);
-    if (!model)
+    struct model *model;
+
+    if (!(model = model_load_from_obj(args.input_file)))
         return 1;
+    model_invert_z(model); // Required by the OBJ format.
+
     if (model->vertex_count == 0)
     {
         fprintf(stderr, "ERROR: Could not read model vertexes.\n");
@@ -433,7 +436,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "ERROR: Could not read model faces.\n");
         exit(1);
     }
-    model_normalize(model, true);
+    model_normalize(model);
 
     // Starting curses is required to get the screen size
     struct surface *surface;

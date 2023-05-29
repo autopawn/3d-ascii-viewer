@@ -140,7 +140,7 @@ void model_invert_triangles(struct model *model)
     }
 }
 
-void model_normalize(struct model *model, bool invert_z)
+void model_normalize(struct model *model)
 {
     vec3 min, max, center;
 
@@ -172,12 +172,14 @@ void model_normalize(struct model *model, bool invert_z)
         model->vertexes[i].x *= scale;
         model->vertexes[i].y *= scale;
         model->vertexes[i].z *= scale;
-        if (invert_z)
-            model->vertexes[i].z *= -1;
     }
+}
 
-    if (invert_z)
-        model_invert_triangles(model);
+void model_invert_z(struct model *model)
+{
+    for (int i = 0; i < model->vertex_count; ++i)
+            model->vertexes[i].z *= -1;
+    model_invert_triangles(model);
 }
 
 void model_free(struct model *model)
