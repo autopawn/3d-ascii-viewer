@@ -9,6 +9,7 @@ struct pixel
 {
     float z;
     char c;
+    int material;
 };
 
 struct surface
@@ -32,7 +33,7 @@ void surface_free(struct surface *surface);
 void surface_clear(struct surface *surface);
 
 void surface_draw_triangle(struct surface *surface, triangle tri, bool inverted_orientation,
-        char c);
+        char c, int material);
 
 void surface_print(FILE *fp, const struct surface *surface);
 

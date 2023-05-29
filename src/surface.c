@@ -77,8 +77,9 @@ void surface_clear(struct surface *surface)
 
     for (int i = 0; i < surface->size_y * surface->size_x; ++i)
     {
-        surface->pixels[i].c = ' ';
         surface->pixels[i].z = INFINITY;
+        surface->pixels[i].c = ' ';
+        surface->pixels[i].material = -1;
     }
 }
 
@@ -133,7 +134,7 @@ static inline float triangle_depth(const struct surface *surface, const triangle
 }
 
 void surface_draw_triangle(struct surface *surface, triangle tri, bool inverted_orientation,
-        char c)
+        char c, int material)
 {
     if (triangle_orientation(&tri) != !inverted_orientation)
         return;
@@ -179,6 +180,7 @@ void surface_draw_triangle(struct surface *surface, triangle tri, bool inverted_
             {
                 pix->z = depth;
                 pix->c = c;
+                pix->material = material;
             }
         }
     }
@@ -190,7 +192,25 @@ void surface_print(FILE *fp, const struct surface *surface)
     {
         for (int xx = 0; xx < surface->size_x; ++xx)
         {
-            fprintf(fp, "%c", surface->pixels[yy * surface->size_x + xx].c);
+            struct pixel px = surface->pixels[yy * surface->size_x + xx];
+            int color = px.material + 1;
+
+            if (color > 0 && color < COLORS && color < COLOR_PAIRS)
+            {
+                short r, g, b;
+
+                color_content(color, &r, &g, &b);
+
+                int rr = (255 * (int) r)/1000;
+                int gg = (255 * (int) g)/1000;
+                int bb = (255 * (int) b)/1000;
+
+                fprintf(fp, "\x1b[38;2;%d;%d;%dm%c\x1b[0m", rr, gg, bb, px.c);
+            }
+            else
+            {
+                fprintf(fp, "%c", px.c);
+            }
         }
         fprintf(fp, "\n");
     }
@@ -203,7 +223,19 @@ void surface_printw(const struct surface *surface)
         move(yy, 0);
         for (int xx = 0; xx < surface->size_x; ++xx)
         {
-            printw("%c", surface->pixels[yy * surface->size_x + xx].c);
+            struct pixel px = surface->pixels[yy * surface->size_x + xx];
+            int color = px.material + 1;
+
+            if (color > 0 && color < COLORS && color < COLOR_PAIRS)
+            {
+                attron(COLOR_PAIR(color));
+                printw("%c", px.c);
+                attroff(COLOR_PAIR(color));
+            }
+            else
+            {
+                printw("%c", px.c);
+            }
         }
     }
 }

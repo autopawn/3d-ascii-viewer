@@ -4,9 +4,18 @@
 
 #include <stdbool.h>
 
+#define MATERIAL_NAME_BUFFER_SIZE 256
+
 struct face
 {
     unsigned int idxs[3];
+    int material; // -1 means no material.
+};
+
+struct material
+{
+    char name[MATERIAL_NAME_BUFFER_SIZE];
+    float Kd_r, Kd_g, Kd_b;
 };
 
 struct model
@@ -18,9 +27,13 @@ struct model
     unsigned int faces_count;
     unsigned int faces_capacity;
     struct face *faces;
+
+    unsigned int materials_count;
+    unsigned int materials_capacity;
+    struct material *materials;
 };
 
-struct model *model_load_from_obj(const char *fname);
+struct model *model_load_from_obj(const char *fname, bool color_support);
 
 void model_bounding_box(const struct model *model, vec3 *minp, vec3 *maxp);
 

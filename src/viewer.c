@@ -42,6 +42,9 @@ static void output_usage(int argc, char *argv[])
     printf("  -X, -Y, -Z        Invert respective axes.\n");
     printf("  -z <zoom>         Change zoom level (default: 100).\n");
     printf("\n");
+    printf("  --color           Display with colors.\n");
+    printf("                    The OBJ format relies on the companion MTL files.\n");
+    printf("\n");
     printf("  --snap <az> <al>  Output a single snap to stdout, with the given azimuth\n");
     printf("                    and altitude angles, in degrees.\n");
     printf("\n");
@@ -75,6 +78,8 @@ struct arguments
     bool static_light;
     char *lum_chars;
     bool invert_x, invert_y, invert_z;
+
+    bool color_support;
 
     bool snap_mode;
     float azimuth, altitude;
@@ -196,6 +201,10 @@ static void parse_arguments(int argc, char *argv[], struct arguments *args)
                 exit(1);
             }
         }
+        else if (!strcmp(argv[i], "--color"))
+        {
+            args->color_support = true;
+        }
         else if (!strcmp(argv[i], "--snap"))
         {
             if (i >= argc - 2)
@@ -292,8 +301,40 @@ static char char_from_normal(vec3 normal, vec3 light_normal, const char *lum_cha
     return lum_chars[p];
 }
 
+static void terminal_init_colors(const struct model *model)
+{
+    for (int i = 0; i < model->materials_count; ++i)
+    {
+        if (i + 1 >= COLORS || i + 1 >= COLOR_PAIRS)
+        {
+            fprintf(stderr, "WARN: Terminal doesn't support enough colors for all materials.\n");
+            return;
+        }
+
+        short r = (short)(model->materials[i].Kd_r * 1000);
+        short g = (short)(model->materials[i].Kd_g * 1000);
+        short b = (short)(model->materials[i].Kd_b * 1000);
+
+        if (r > 1000)
+            r = 1000;
+        if (r < 0)
+            r = 0;
+        if (g > 1000)
+            g = 1000;
+        if (g < 0)
+            g = 0;
+        if (b > 1000)
+            b = 1000;
+        if (b < 0)
+            b = 0;
+
+        init_color(i + 1, r, g, b);
+        init_pair(i + 1, i + 1, 0);
+    }
+}
+
 static void surface_draw_model(struct surface *surface, const struct model *model, float azimuth,
-        float altitude, float zoom, bool static_light, const char *lum_chars)
+        float altitude, float zoom, bool static_light, const char *lum_chars, bool color_support)
 {
     int lum_count = strlen(lum_chars);
 
@@ -345,7 +386,7 @@ static void surface_draw_model(struct surface *surface, const struct model *mode
             c = char_from_normal(vec3_neg(triangle_normal(&tri)), light, lum_chars, lum_count);
         }
 
-        surface_draw_triangle(surface, tri, true, c);
+        surface_draw_triangle(surface, tri, true, c, color_support ? model->faces[f].material : -1);
     }
 }
 
@@ -424,7 +465,12 @@ int main(int argc, char *argv[])
     args.top_elevation = false;
     args.static_light = false;
     args.lum_chars = DEFAULT_LUM_OPTIONS;
+    args.invert_x = false;
+    args.invert_y = false;
+    args.invert_z = false;
     args.zoom = 100;
+
+    args.color_support = false;
 
     args.snap_mode = false;
     args.azimuth = 0.0;
@@ -436,7 +482,7 @@ int main(int argc, char *argv[])
 
     struct model *model;
 
-    if (!(model = model_load_from_obj(args.input_file)))
+    if (!(model = model_load_from_obj(args.input_file, true)))
         return 1;
     model_invert_z(model); // Required by the OBJ format.
 
@@ -468,6 +514,24 @@ int main(int argc, char *argv[])
     if (!surface)
         return 1;
 
+    if (args.color_support)
+    {
+        if (has_colors() == FALSE)
+        {
+            endwin();
+            fprintf(stderr, "ERROR: Terminal does not support colors.\n");
+            exit(1);
+        }
+        if (can_change_color() == FALSE)
+        {
+            endwin();
+            fprintf(stderr, "ERROR: Terminal does not support changing colors.\n");
+            exit(1);
+        }
+        start_color();
+        terminal_init_colors(model);
+    }
+
     // Initialize clock
     unsigned long long frame_duration = (1000000 + args.fps - 1)/args.fps;
     unsigned long long start = get_current_useconds();
@@ -479,7 +543,8 @@ int main(int argc, char *argv[])
         float azimuth = PI * args.azimuth / 180.0;
         float altitude = PI * args.altitude / 180.0;
         float zoom = args.zoom / 100.0;
-        surface_draw_model(surface, model, azimuth, altitude, zoom, args.static_light, args.lum_chars);
+        surface_draw_model(surface, model, azimuth, altitude, zoom, args.static_light,
+                args.lum_chars, args.color_support);
 
         surface_print(stdout, surface);
     }
@@ -504,7 +569,7 @@ int main(int argc, char *argv[])
             float altitude = PI * altitude_deg / 180;
 
             surface_draw_model(surface, model, azimuth, altitude, zoom / 100.0,
-                    args.static_light, args.lum_chars);
+                    args.static_light, args.lum_chars, args.color_support);
 
             // Print surface
             move(0, 0);
@@ -581,7 +646,8 @@ int main(int argc, char *argv[])
             float altitude = (args.top_elevation ? 0.25 : 0.125) * PI * (1 - sinf(al_speed * time));
             float zoom = args.zoom / 100.0;
 
-            surface_draw_model(surface, model, azimuth, altitude, zoom, args.static_light, args.lum_chars);
+            surface_draw_model(surface, model, azimuth, altitude, zoom, args.static_light,
+                    args.lum_chars, args.color_support);
 
             // Print surface
             move(0, 0);

@@ -1,6 +1,7 @@
 #include "model.h"
 
 #include <assert.h>
+#include <libgen.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -25,6 +26,14 @@ static struct model *model_init(void)
         exit(1);
     }
     model->vertex_count = 0;
+
+    model->materials_capacity = 1;
+    if (!(model->materials = malloc(model->materials_capacity * sizeof(*model->materials))))
+    {
+        fprintf(stderr, "ERROR: Memory allocation failure.\n");
+        exit(1);
+    }
+    model->materials_count = 0;
 
     return model;
 }
@@ -78,7 +87,7 @@ static bool model_validate_idxs(struct model *model)
     return valid;
 }
 
-static void model_add_face(struct model *model, int idx1, int idx2, int idx3)
+static void model_add_face(struct model *model, int idx1, int idx2, int idx3, int material)
 {
     if (model->faces_count == model->faces_capacity)
     {
@@ -92,8 +101,45 @@ static void model_add_face(struct model *model, int idx1, int idx2, int idx3)
     model->faces[model->faces_count].idxs[0] = idx1;
     model->faces[model->faces_count].idxs[1] = idx2;
     model->faces[model->faces_count].idxs[2] = idx3;
+    model->faces[model->faces_count].material = material;
 
     model->faces_count++;
+}
+
+static void model_add_material(struct model *model, const char *name, float d_r, float d_g, float d_b)
+{
+    if (strlen(name) >= MATERIAL_NAME_BUFFER_SIZE)
+    {
+        fprintf(stderr, "ERROR: Material name too long.\n");
+        exit(1);
+    }
+
+    if (model->materials_count == model->materials_capacity)
+    {
+        model->materials_capacity *= 2;
+        if (!(model->materials = realloc(model->materials, model->materials_capacity * sizeof(*model->materials))))
+        {
+            fprintf(stderr, "ERROR: Memory allocation failure.\n");
+            exit(1);
+        }
+    }
+
+    strcpy(model->materials[model->materials_count].name, name);
+    model->materials[model->materials_count].Kd_r = d_r;
+    model->materials[model->materials_count].Kd_g = d_g;
+    model->materials[model->materials_count].Kd_b = d_b;
+
+    model->materials_count++;
+}
+
+int model_get_material_idx(struct model *model, const char *name)
+{
+    for (int i = 0; i < model->materials_count; ++i)
+    {
+        if (strcmp(model->materials[i].name, name) == 0)
+            return i;
+    }
+    return -1;
 }
 
 void model_bounding_box(const struct model *model, vec3 *minp, vec3 *maxp)
@@ -200,6 +246,7 @@ void model_free(struct model *model)
 {
     free(model->vertexes);
     free(model->faces);
+    free(model->materials);
     free(model);
 }
 
@@ -271,7 +318,73 @@ static bool parse_int(char **buffer, int *i)
     return true;
 }
 
-struct model *model_load_from_obj(const char *fname)
+// Remove end-of-line characters and turn tabs into spaces
+static void string_strip(char *str)
+{
+    char *p = str;
+    while (*p)
+    {
+        if (*p == '\n' || *p == '\r')
+            *p = '\0';
+        if (*p == '\t')
+            *p = ' ';
+        p++;
+    }
+}
+
+static void model_load_materials_from_mtl(struct model *model, const char *mtl_fname)
+{
+    FILE *fp = fopen(mtl_fname, "r");
+    if (!fp)
+    {
+        fprintf(stderr, "WARN: failed to load file \"%s\".\n", mtl_fname);
+        return;
+    }
+
+    // Read each line of the file
+    char buffer[256];
+
+    while (fgets(buffer, sizeof(buffer), fp))
+    {
+        string_strip(buffer);
+
+        char *bufferp = buffer;
+        char *instr = str_chop_skip_empty(&bufferp, " ");
+
+        if (!instr || instr[0] == '#')
+            continue;
+
+        if (strcmp(instr, "newmtl") == 0)
+        {
+            const char *name = str_chop_skip_empty(&bufferp, " ");
+
+            model_add_material(model, name, 1.0, 1.0, 1.0);
+        }
+        else if (strcmp(instr, "Kd") == 0)
+        {
+            if (model->materials_count == 0)
+            {
+                fprintf(stderr, "WARN: Expected newmtl before \"%s\" instruction.\n", instr);
+                continue;
+            }
+
+            float r, g, b;
+            if (!parse_float(&bufferp, &r) || !parse_float(&bufferp, &g) || !parse_float(&bufferp, &b))
+            {
+                fprintf(stderr, "WARN: invalid \"%s\" instruction.\n", instr);
+                continue;
+            }
+
+            model->materials[model->materials_count - 1].Kd_r = r;
+            model->materials[model->materials_count - 1].Kd_g = g;
+            model->materials[model->materials_count - 1].Kd_b = b;
+        }
+    }
+
+    fclose(fp);
+}
+
+struct model *model_load_from_obj(const char *fname, bool color_support)
 {
     FILE *fp = fopen(fname, "r");
     if (!fp)
@@ -286,17 +399,11 @@ struct model *model_load_from_obj(const char *fname)
     // Read each line of the file
     char buffer[256];
 
+    int current_material = -1;
+
     while (fgets(buffer, sizeof(buffer), fp))
     {
-        char *p = buffer;
-        while (*p)
-        {
-            if (*p == '\n' || *p == '\r')
-                *p = '\0';
-            if (*p == '\t')
-                *p = ' ';
-            p++;
-        }
+        string_strip(buffer);
 
         char *bufferp = buffer;
         char *instr = str_chop_skip_empty(&bufferp, " ");
@@ -343,10 +450,49 @@ struct model *model_load_from_obj(const char *fname)
                 i2d = obj_derelativize_idx(i2, model->vertex_count);
                 i3d = obj_derelativize_idx(i3, model->vertex_count);
 
-                model_add_face(model, i1d, i2d, i3d);
+                model_add_face(model, i1d, i2d, i3d, current_material);
                 // Shift for possible new triangular face
                 i2 = i3;
             }
+        }
+        else if (color_support && strcmp(instr, "mtllib") == 0)
+        {
+            // Mutable copy of fname
+            char *fname2;
+            if (!(fname2 = malloc(strlen(fname) + 2)))
+            {
+                fprintf(stderr, "ERROR: Memory allocation failure.\n");
+                exit(1);
+            }
+            strcpy(fname2, fname);
+
+            // MTL file location
+            const char *fname_dirname = dirname(fname2);
+            size_t mtl_fname_size = strlen(fname_dirname) + strlen(bufferp) + 2;
+
+            char *mtl_fname;
+            if (!(mtl_fname = malloc(mtl_fname_size)))
+            {
+                free(fname2);
+                fprintf(stderr, "ERROR: Memory allocation failure for MTL file name.\n");
+                exit(1);
+            }
+            strcpy(mtl_fname, fname_dirname);
+            strcat(mtl_fname, "/");
+            strcat(mtl_fname, bufferp);
+
+            fprintf(stderr, "NOTE: Reading \"%s\".\n", mtl_fname);
+
+            model_load_materials_from_mtl(model, mtl_fname);
+
+            free(fname2);
+            free(mtl_fname);
+        }
+        else if (color_support && strcmp(instr, "usemtl") == 0)
+        {
+            const char *name = str_chop_skip_empty(&bufferp, " ");
+
+            current_material = model_get_material_idx(model, name);
         }
     }
 
