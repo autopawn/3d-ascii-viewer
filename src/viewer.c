@@ -305,7 +305,9 @@ static void terminal_init_colors(const struct model *model)
 {
     for (int i = 0; i < model->materials_count; ++i)
     {
-        if (i + 1 >= COLORS || i + 1 >= COLOR_PAIRS)
+        int color = i + 1;
+
+        if (color >= COLORS || color >= COLOR_PAIRS)
         {
             fprintf(stderr, "WARN: Terminal doesn't support enough colors for all materials.\n");
             return;
@@ -328,8 +330,8 @@ static void terminal_init_colors(const struct model *model)
         if (b < 0)
             b = 0;
 
-        init_color(i + 1, r, g, b);
-        init_pair(i + 1, i + 1, 0);
+        init_color(color, r, g, b);
+        init_pair(color, color, 0);
     }
 }
 
