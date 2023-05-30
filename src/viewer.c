@@ -313,9 +313,17 @@ static void terminal_init_colors(const struct model *model)
             return;
         }
 
-        short r = (short)(model->materials[i].Kd_r * 1000);
-        short g = (short)(model->materials[i].Kd_g * 1000);
-        short b = (short)(model->materials[i].Kd_b * 1000);
+        int r = (int)(model->materials[i].Kd_r * 1000);
+        int g = (int)(model->materials[i].Kd_g * 1000);
+        int b = (int)(model->materials[i].Kd_b * 1000);
+
+        if (r + g + b < 100)
+        {
+            int rem = 100 - r + g + b;
+            r += (rem + 2)/3;
+            g += (rem + 2)/3;
+            b += (rem + 2)/3;
+        }
 
         if (r > 1000)
             r = 1000;
@@ -330,7 +338,7 @@ static void terminal_init_colors(const struct model *model)
         if (b < 0)
             b = 0;
 
-        init_color(color, r, g, b);
+        init_color(color, (short)r, (short)g, (short)b);
         init_pair(color, color, 0);
     }
 }
@@ -392,7 +400,7 @@ static void surface_draw_model(struct surface *surface, const struct model *mode
     }
 }
 
-// Model radious only in X and Z.
+// Model radius only in X and Z.
 static float model_xz_rad(const struct model *model)
 {
     float rad = 0.0;
