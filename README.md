@@ -28,6 +28,19 @@ For additional options pass the `--help` option.
 $ ./3d-ascii-viewer --help
 ```
 
+## Color support
+
+With the `--color` option, the program looks for the companion MTL files (referenced in the main OBJ file)
+for information about the materials used by the model.
+
+Characters within faces that use a material will be displayed with the **diffuse color** of said material.
+Textures are not supported.
+
+![Example usage capture.](capture_color.gif)
+
+To use this option, the terminal must support color attributes and must be capable of redefining colors.
+Also, the number of colors is limited by the maximum number of color pairs supported by ncurses.
+
 ## Models
 
 * [Fox and ShibaInu models](https://opengameart.org/content/fox-and-shiba) made by PixelMannen for the Public Domain (CC0).
