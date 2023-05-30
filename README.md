@@ -45,6 +45,7 @@ Also, the number of colors is limited by the maximum number of color pairs suppo
 
 * [Fox and ShibaInu models](https://opengameart.org/content/fox-and-shiba) made by PixelMannen for the Public Domain (CC0).
 * [Tree models](https://opengameart.org/content/fox-trees-pack) made by Lokesh Mehra (mehrasaur) for the Public Domain (CC0).
+* [Tux model](https://blendswap.com/blend/23774) made by Vido89 for the Public Domain (CC0).
 
 ASCII luminescence idea by: [a1k0n.net](https://www.a1k0n.net/2011/07/20/donut-math.html)
 
