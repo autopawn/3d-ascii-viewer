@@ -51,6 +51,7 @@ static void output_usage(int argc, char *argv[])
     printf("  --interactive     Manually rotate the camera.\n");
     printf("                    Controls: ARROW KEYS, '-', '+'\n");
     printf("                    Alt-controls: H, J, K, L, A, S\n");
+    printf("                    Quit: Q    Toggle Hud: T\n");
     printf("\n");
     printf("  -?, --help        Give this help list\n");
     printf("\n");
@@ -571,6 +572,8 @@ int main(int argc, char *argv[])
         float altitude_deg = 0.0;
         float zoom = args.zoom;
 
+        bool hud = true;
+
         while (1)
         {
             surface_clear(surface);
@@ -584,12 +587,15 @@ int main(int argc, char *argv[])
             // Print surface
             move(0, 0);
             surface_printw(surface);
-            move(0, 0);
-            printw("zo:%4.0f", zoom);
-            move(1, 0);
-            printw("az: %3.0f", azimuth_deg);
-            move(2, 0);
-            printw("al: %3.0f", altitude_deg);
+            if (hud)
+            {
+                move(0, 0);
+                printw("zo:%4.0f", zoom);
+                move(1, 0);
+                printw("az: %3.0f", azimuth_deg);
+                move(2, 0);
+                printw("al: %3.0f", altitude_deg);
+            }
             refresh();
 
             int key = getch();
@@ -605,6 +611,8 @@ int main(int argc, char *argv[])
 
             if (key == 'q')
                 break;
+            if (key == 't')
+                hud = !hud;
             if (key == 'h' || key == KEY_LEFT)
                 azimuth_deg += angle_move;
             if (key == 'l' || key == KEY_RIGHT)
