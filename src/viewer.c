@@ -633,10 +633,10 @@ int main(int argc, char *argv[])
             if (azimuth_deg >= 360)
                 azimuth_deg -= 360;
 
-            if (altitude_deg > 90)
-                altitude_deg = 90;
-            if (altitude_deg < -90)
-                altitude_deg = -90;
+            if (altitude_deg > 180)
+                altitude_deg = 180;
+            if (altitude_deg < -180)
+                altitude_deg = -180;
 
             if (zoom > INTERACTIVE_ZOOM_MAX)
                 zoom = INTERACTIVE_ZOOM_MAX;
