@@ -142,40 +142,6 @@ int model_get_material_idx(struct model *model, const char *name)
     return -1;
 }
 
-void model_bounding_box(const struct model *model, vec3 *minp, vec3 *maxp)
-{
-    vec3 min = {0};
-    vec3 max = {0};
-
-    if (model->vertex_count > 0)
-    {
-        min = model->vertexes[0];
-        max = model->vertexes[0];
-    }
-
-    for (int i = 0; i < model->vertex_count; i++)
-    {
-        vec3 v = model->vertexes[i];
-
-        if (v.x < min.x)
-            min.x = v.x;
-        if (v.y < min.y)
-            min.y = v.y;
-        if (v.z < min.z)
-            min.z = v.z;
-
-        if (v.x > max.x)
-            max.x = v.x;
-        if (v.y > max.y)
-            max.y = v.y;
-        if (v.z > max.z)
-            max.z = v.z;
-    }
-
-    *minp = min;
-    *maxp = max;
-}
-
 void model_invert_triangles(struct model *model)
 {
     for (int f = 0; f < model->faces_count; ++f)
@@ -188,13 +154,7 @@ void model_invert_triangles(struct model *model)
 
 void model_normalize(struct model *model)
 {
-    vec3 min, max, center;
-
-    model_bounding_box(model, &min, &max);
-
-    center.x = (min.x + max.x) / 2.0;
-    center.y = (min.y + max.y) / 2.0;
-    center.z = (min.z + max.z) / 2.0;
+    vec3 center = get_bounding_box_center(model->vertexes, model->vertex_count);
 
     for (int i = 0; i < model->vertex_count; ++i)
     {
@@ -203,14 +163,7 @@ void model_normalize(struct model *model)
         model->vertexes[i].z -= center.z;
     }
 
-    float max_mag = 0.0;
-    for (int i = 0; i < model->vertex_count; ++i)
-    {
-        float mag = vec3_mag(model->vertexes[i]);
-
-        if (mag > max_mag)
-            max_mag = mag;
-    }
+    float max_mag = get_max_dist(model->vertexes, model->vertex_count, (vec3){0, 0, 0});
 
     float scale = (max_mag == 0) ? 1.0 : 1.0 / max_mag;
     for (int i = 0; i < model->vertex_count; ++i)

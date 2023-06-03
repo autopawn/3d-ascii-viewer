@@ -1,6 +1,7 @@
 #pragma once
 
 #include "trigonometry.h"
+#include "sets.h"
 
 #include <stdbool.h>
 
@@ -34,8 +35,6 @@ struct model
 };
 
 struct model *model_load_from_obj(const char *fname, bool color_support);
-
-void model_bounding_box(const struct model *model, vec3 *minp, vec3 *maxp);
 
 void model_invert_triangles(struct model *model);
 
