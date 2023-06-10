@@ -304,7 +304,7 @@ static char char_from_normal(vec3 normal, vec3 light_normal, const char *lum_cha
 
 static void terminal_init_colors(const struct model *model)
 {
-    const int MINIMUM_COLOR_VALUE_SUM = 200;
+    const int MINIMUM_COLOR_VALUE_SUM = 140;
 
     for (int i = 0; i < model->materials_count; ++i)
     {
