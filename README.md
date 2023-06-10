@@ -49,6 +49,9 @@ Also, the number of colors is limited by the maximum number of color pairs suppo
 
 ASCII luminescence idea by: [a1k0n.net](https://www.a1k0n.net/2011/07/20/donut-math.html)
 
+**Note:** If you want to add a Public Domain (CC0) or MIT licenced model, you can send it as a Pull Request or open an Issue.
+Remember to add the proper credits in the list here.
+
 ## Older version
 
 There is also an [older version](https://github.com/autopawn/3d-ascii-viewer-haskell), written in Haskell.
