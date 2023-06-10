@@ -495,7 +495,7 @@ int main(int argc, char *argv[])
 
     struct model *model;
 
-    if (!(model = model_load_from_obj(args.input_file, true)))
+    if (!(model = model_load_from_obj(args.input_file, args.color_support)))
         return 1;
     model_invert_z(model); // Required by the OBJ format.
 
