@@ -454,3 +454,148 @@ struct model *model_load_from_obj(const char *fname, bool color_support)
     model_validate_idxs(model);
     return model;
 }
+
+struct model *model_load_from_ply(const char *fname)
+{
+    FILE *fp = fopen(fname, "r");
+    if (!fp)
+    {
+        fprintf(stderr, "ERROR: failed to load file \"%s\".\n", fname);
+        return NULL;
+    }
+
+    // Create a new model
+    struct model *model = model_init();
+
+    // Read each line of the file
+    char buffer[256];
+
+    int vertex_count = 0;
+    int face_count = 0;
+
+    while (fgets(buffer, sizeof(buffer), fp))
+    {
+        char *p = buffer;
+        while (*p)
+        {
+            if (*p == '\n' || *p == '\r')
+                *p = '\0';
+            if (*p == '\t')
+                *p = ' ';
+            p++;
+        }
+
+        char *bufferp = buffer;
+        char *instr = str_chop_skip_empty(&bufferp, " ");
+
+        if (!instr)
+            continue;
+
+        if (strcmp(instr, "element") == 0)
+        {
+            char *type = str_chop_skip_empty(&bufferp, " ");
+            int count = 0;
+            parse_int(&bufferp, &count);
+
+            if (strcmp(type, "vertex") == 0)
+            {
+                vertex_count = count;
+            }
+            else if (strcmp(type, "face") == 0)
+            {
+                face_count = count;
+            }
+        }
+        else if (strcmp(instr, "property") == 0)
+        {
+            // Skip property declarations
+        }
+        else if (strcmp(instr, "end_header") == 0)
+        {
+            // End of header, start reading data
+            break;
+        }
+    }
+
+    for (int i = 0; i < vertex_count; i++)
+    {
+        float f1, f2, f3;
+
+        if (!fgets(buffer, sizeof(buffer), fp))
+        {
+            fprintf(stderr, "ERROR: could not read vertex data.\n");
+            fclose(fp);
+            model_free(model);
+            return NULL;
+        }
+        char *bufferp = buffer;
+
+        if (!parse_float(&bufferp, &f1) || !parse_float(&bufferp, &f2) || !parse_float(&bufferp, &f3))
+        {
+            fprintf(stderr, "ERROR: unexpected vertex data format.\n");
+            fclose(fp);
+            model_free(model);
+            return NULL;
+        }
+
+        vec3 vec;
+        vec.x = f1;
+        vec.y = f2;
+        vec.z = f3;
+
+        model_add_vertex(model, vec);
+    }
+
+    for (int i = 0; i < face_count; i++)
+    {
+        int list_length;
+        int i1, i2, i3;
+
+        if (!fgets(buffer, sizeof(buffer), fp))
+        {
+            fprintf(stderr, "ERROR: could not read face data.\n");
+            fclose(fp);
+            model_free(model);
+            return NULL;
+        }
+        char *bufferp = buffer;
+
+        if (!parse_int(&bufferp, &list_length))
+        {
+            fprintf(stderr, "ERROR: unexpected face data format.\n");
+            fclose(fp);
+            model_free(model);
+            return NULL;
+        }
+
+        if (list_length >= 3)
+        {
+            if (!parse_int(&bufferp, &i1) || !parse_int(&bufferp, &i2))
+            {
+                fprintf(stderr, "ERROR: unexpected face data format.\n");
+                fclose(fp);
+                model_free(model);
+                return NULL;
+            }
+        }
+
+        for (int k = 2; k < list_length; ++k)
+        {
+            if (!parse_int(&bufferp, &i3))
+            {
+                fprintf(stderr, "ERROR: unexpected face data format.\n");
+                fclose(fp);
+                model_free(model);
+                return NULL;
+            }
+
+            model_add_face(model, i1, i2, i3, -1);
+            // Shift for possible new triangular face
+            i2 = i3;
+        }
+    }
+    fclose(fp);
+
+    model_validate_idxs(model);
+    return model;
+}

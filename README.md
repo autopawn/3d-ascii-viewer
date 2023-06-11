@@ -4,7 +4,10 @@ Viewer of 3D models in ASCII, written in C.
 
 ![Example usage capture.](capture.gif)
 
-**Note**: Currently, the program only supports [Wavefront .obj](https://en.wikipedia.org/wiki/Wavefront_.obj_file) files.
+Supported formats:
+
+* [Wavefront .obj](https://en.wikipedia.org/wiki/Wavefront_.obj_file).
+* [ASCII Polygon File Format .ply](https://en.wikipedia.org/wiki/PLY_(file_format)) (partially).
 
 ## Compile an run the program
 
