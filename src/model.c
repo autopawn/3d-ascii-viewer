@@ -521,8 +521,8 @@ struct model *model_load_from_stl(const char *fname)
 
                 vec3 vec;
                 vec.x = f1;
-                vec.y = f2;
-                vec.z = f3;
+                vec.y = f3;
+                vec.z = f2;
 
                 model_add_vertex(model, vec);
             }
@@ -559,8 +559,8 @@ struct model *model_load_from_stl(const char *fname)
             {
                 vec3 vec;
                 vec.x = facet[3 + (vIndex * 3)];
-                vec.y = facet[4 + (vIndex * 3)];
-                vec.z = facet[5 + (vIndex * 3)];
+                vec.y = facet[5 + (vIndex * 3)];
+                vec.z = facet[4 + (vIndex * 3)];
 
                 model_add_vertex(model, vec);
             }
@@ -577,7 +577,7 @@ struct model *model_load_from_stl(const char *fname)
     // For every 3 vertices create a face
     for (int i = 0; i < model->vertex_count; i += 3)
     {
-        model_add_face(model, i, i+1, i+2, current_material);
+        model_add_face(model, i, i+2, i+1, current_material);
     }
 
     fclose(fp);
