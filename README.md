@@ -4,7 +4,10 @@ Viewer of 3D models in ASCII, written in C.
 
 ![Example usage capture.](capture.gif)
 
-**Note**: Currently, the program only supports [Wavefront .obj](https://en.wikipedia.org/wiki/Wavefront_.obj_file) files.
+Supported formats:
+
+* [Wavefront .obj](https://en.wikipedia.org/wiki/Wavefront_.obj_file).
+* [STL .stl](https://en.wikipedia.org/wiki/STL_(file_format)).
 
 ## Compile an run the program
 
