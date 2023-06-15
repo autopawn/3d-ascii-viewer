@@ -454,3 +454,134 @@ struct model *model_load_from_obj(const char *fname, bool color_support)
     model_validate_idxs(model);
     return model;
 }
+
+struct model *model_load_from_stl(const char *fname)
+{
+    FILE *fp = fopen(fname, "rb");
+    if (!fp)
+    {
+        fprintf(stderr, "ERROR: failed to load file \"%s\".\n", fname);
+        return NULL;
+    }
+
+    // Create a new model
+    struct model *model = model_init();
+
+    // Read each line of the file
+    char buffer[256];
+
+    int current_material = -1;
+
+    // Check this is an ASCII STL file
+    // As the header of a binary STL could start with solid
+    // we must also check the second line starts with facet
+    bool isASCII = false;
+
+    // Check first line starts with "solid"
+    fgets(buffer, sizeof(buffer), fp);
+
+    char *bufferp = buffer;
+    char *instr = str_chop_skip_empty(&bufferp, " ");
+
+    if (strcmp(instr, "solid") == 0)
+    {
+        // Check second line starts with "facet"
+        fgets(buffer, sizeof(buffer), fp);
+
+        char *bufferp = buffer;
+        char *instr = str_chop_skip_empty(&bufferp, " ");
+
+        if (strcmp(instr, "facet") == 0)
+        {
+            isASCII = true;
+        }
+    }
+
+    if (isASCII)
+    {
+        while (fgets(buffer, sizeof(buffer), fp))
+        {
+            string_strip(buffer);
+
+            char *bufferp = buffer;
+            char *instr = str_chop_skip_empty(&bufferp, " ");
+
+            // As we ignore normals only vertex definitions are required
+            if (strcmp(instr, "vertex") == 0)
+            {
+                float f1, f2, f3;
+
+                if (!parse_float(&bufferp, &f1) || !parse_float(&bufferp, &f2) || !parse_float(&bufferp, &f3))
+                {
+                    fprintf(stderr, "ERROR: invalid \"vertex\" instruction.\n");
+                    fclose(fp);
+                    model_free(model);
+                    return NULL;
+                }
+
+                vec3 vec;
+                vec.x = f1;
+                vec.y = f2;
+                vec.z = f3;
+
+                model_add_vertex(model, vec);
+            }
+        }
+    }
+    else
+    {
+        // ASCII check will have moved the read pointer beyond the first block of data,
+        // reset to byte 80, after the 80 byte header
+        fseek(fp, 80, SEEK_SET);
+
+        int facetCountExpected;
+        int facetCountActual = 0;
+
+        char facetCount[4];
+        if (fread(facetCount, sizeof(int), 1, fp) != 1)
+        {
+            fprintf(stderr, "ERROR: Failed to read facet count.\n");
+            fclose(fp);
+            model_free(model);
+            return NULL;
+        }
+        // NOTE: Assuming little-endian hardware.
+        memcpy(&facetCountExpected, facetCount, sizeof(int));
+
+        // Read facet definitions, 50 bytes each, facet normal, 3 vertices, and a 2 byte spacer
+        char buffer[50];
+        while(fread(buffer, sizeof(char), 50, fp) == 50)
+        {
+            float facet[12];
+            memcpy(&facet, buffer, sizeof(float[12]));
+
+            for (int vIndex = 0; vIndex < 3; vIndex++)
+            {
+                vec3 vec;
+                vec.x = facet[3 + (vIndex * 3)];
+                vec.y = facet[4 + (vIndex * 3)];
+                vec.z = facet[5 + (vIndex * 3)];
+
+                model_add_vertex(model, vec);
+            }
+
+            ++facetCountActual;
+        }
+
+        if (facetCountExpected != facetCountActual)
+        {
+            fprintf(stderr, "WARN: imported facet count does not match expected facet count.\n");
+        }
+    }
+
+    // For every 3 vertices create a face
+    for (int i = 0; i < model->vertex_count; i += 3)
+    {
+        model_add_face(model, i, i+1, i+2, current_material);
+    }
+
+    fclose(fp);
+
+    model_validate_idxs(model);
+    return model;
+}
