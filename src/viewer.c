@@ -461,6 +461,13 @@ static struct surface *create_surface(const struct model *model, int arg_surface
     return surface_init(surface_w, surface_h, surface_size_x, surface_size_y);
 }
 
+const char *get_file_extension(const char *filename)
+{
+    const char *dot = strrchr(filename, '.');
+    if (!dot || dot == filename) return NULL;
+    return dot + 1;
+}
+
 int main(int argc, char *argv[])
 {
     if (argc == 1)
@@ -495,9 +502,32 @@ int main(int argc, char *argv[])
 
     struct model *model;
 
-    if (!(model = model_load_from_obj(args.input_file, args.color_support)))
-        return 1;
-    model_invert_z(model); // Required by the OBJ format.
+    const char *fileExt = get_file_extension(args.input_file);
+    if (fileExt == NULL)
+    {
+        fprintf(stderr, "ERROR: Input file has no extension.\n");
+        exit(1);
+    }
+    else if (strcmp(fileExt, "obj") == 0)
+    {
+        if (!(model = model_load_from_obj(args.input_file, args.color_support)))
+            return 1;
+        model_invert_z(model); // Required by the OBJ format.
+    }
+    else if (strcmp(fileExt, "stl") == 0)
+    {
+        if (args.color_support)
+        {
+            fprintf(stderr, "WARN: Colors are not supported in STL format.\n");
+        }
+        if (!(model = model_load_from_stl(args.input_file)))
+            return 1;
+    }
+    else
+    {
+        fprintf(stderr, "ERROR: Input file has unsupported extension.\n");
+        exit(1);
+    }
 
     if (model->vertex_count == 0)
     {
