@@ -35,6 +35,7 @@ struct model
 };
 
 struct model *model_load_from_obj(const char *fname, bool color_support);
+struct model *model_load_from_stl(const char *fname);
 
 void model_invert_triangles(struct model *model);
 
