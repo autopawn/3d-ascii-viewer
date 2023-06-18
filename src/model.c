@@ -550,8 +550,17 @@ struct model *model_load_from_stl(const char *fname)
 
         // Read facet definitions, 50 bytes each, facet normal, 3 vertices, and a 2 byte spacer
         char buffer[50];
-        while(fread(buffer, sizeof(char), 50, fp) == 50)
+        size_t bytes_read;
+        while((bytes_read = fread(buffer, sizeof(char), 50, fp)))
         {
+            if (bytes_read < 50)
+            {
+                fprintf(stderr, "ERROR: Failed to read facet data.\n");
+                fclose(fp);
+                model_free(model);
+                return NULL;
+            }
+
             float facet[12];
             memcpy(&facet, buffer, sizeof(float[12]));
 
