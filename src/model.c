@@ -475,7 +475,7 @@ struct model *model_load_from_stl(const char *fname)
     // Check this is an ASCII STL file
     // As the header of a binary STL could start with solid
     // we must also check the second line starts with facet
-    bool isASCII = false;
+    bool is_ASCII = false;
 
     // Check first line starts with "solid"
     fgets(buffer, sizeof(buffer), fp);
@@ -493,11 +493,11 @@ struct model *model_load_from_stl(const char *fname)
 
         if (strcmp(instr, "facet") == 0)
         {
-            isASCII = true;
+            is_ASCII = true;
         }
     }
 
-    if (isASCII)
+    if (is_ASCII)
     {
         while (fgets(buffer, sizeof(buffer), fp))
         {
@@ -534,11 +534,11 @@ struct model *model_load_from_stl(const char *fname)
         // reset to byte 80, after the 80 byte header
         fseek(fp, 80, SEEK_SET);
 
-        int facetCountExpected;
-        int facetCountActual = 0;
+        int facet_count_expected;
+        int facet_count_actual = 0;
 
-        char facetCount[4];
-        if (fread(facetCount, sizeof(int), 1, fp) != 1)
+        char facet_count[4];
+        if (fread(facet_count, sizeof(int), 1, fp) != 1)
         {
             fprintf(stderr, "ERROR: Failed to read facet count.\n");
             fclose(fp);
@@ -546,7 +546,7 @@ struct model *model_load_from_stl(const char *fname)
             return NULL;
         }
         // NOTE: Assuming little-endian hardware.
-        memcpy(&facetCountExpected, facetCount, sizeof(int));
+        memcpy(&facet_count_expected, facet_count, sizeof(int));
 
         // Read facet definitions, 50 bytes each, facet normal, 3 vertices, and a 2 byte spacer
         char buffer[50];
@@ -555,20 +555,20 @@ struct model *model_load_from_stl(const char *fname)
             float facet[12];
             memcpy(&facet, buffer, sizeof(float[12]));
 
-            for (int vIndex = 0; vIndex < 3; vIndex++)
+            for (int v_index = 0; v_index < 3; v_index++)
             {
                 vec3 vec;
-                vec.x = facet[3 + (vIndex * 3)];
-                vec.y = facet[5 + (vIndex * 3)];
-                vec.z = facet[4 + (vIndex * 3)];
+                vec.x = facet[3 + (v_index * 3)];
+                vec.y = facet[5 + (v_index * 3)];
+                vec.z = facet[4 + (v_index * 3)];
 
                 model_add_vertex(model, vec);
             }
 
-            ++facetCountActual;
+            ++facet_count_actual;
         }
 
-        if (facetCountExpected != facetCountActual)
+        if (facet_count_expected != facet_count_actual)
         {
             fprintf(stderr, "WARN: imported facet count does not match expected facet count.\n");
         }
@@ -577,7 +577,7 @@ struct model *model_load_from_stl(const char *fname)
     // For every 3 vertices create a face
     for (int i = 0; i < model->vertex_count; i += 3)
     {
-        model_add_face(model, i, i+2, i+1, current_material);
+        model_add_face(model, i, i + 2, i + 1, current_material);
     }
 
     fclose(fp);
