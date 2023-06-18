@@ -1,6 +1,7 @@
 #include "surface.h"
 #include "model.h"
 
+#include <ctype.h>
 #include <errno.h>
 #include <ncurses.h>
 #include <stdlib.h>
@@ -461,11 +462,22 @@ static struct surface *create_surface(const struct model *model, int arg_surface
     return surface_init(surface_w, surface_h, surface_size_x, surface_size_y);
 }
 
-const char *get_file_extension(const char *filename)
+void init_file_extension(char dst[5], const char *filename)
 {
-    const char *dot = strrchr(filename, '.');
-    if (!dot || dot == filename) return NULL;
-    return dot + 1;
+    for (int i = 0; i < 5; ++i)
+        dst[i] = '\0';
+
+    const char *ext = strrchr(filename, '.');
+    if (!ext || ext == filename)
+        return;
+    ext++;
+
+    for (int i = 0; i < 4; ++i)
+    {
+        if (ext[i] == '\0')
+            break;
+        dst[i] = tolower(ext[i]);
+    }
 }
 
 int main(int argc, char *argv[])
@@ -502,19 +514,21 @@ int main(int argc, char *argv[])
 
     struct model *model;
 
-    const char *fileExt = get_file_extension(args.input_file);
-    if (fileExt == NULL)
+    char file_extension[5];
+    init_file_extension(file_extension, args.input_file);
+
+    if (file_extension[0] == '\0')
     {
         fprintf(stderr, "ERROR: Input file has no extension.\n");
         exit(1);
     }
-    else if (strcmp(fileExt, "obj") == 0)
+    else if (strcmp(file_extension, "obj") == 0)
     {
         if (!(model = model_load_from_obj(args.input_file, args.color_support)))
             return 1;
         model_invert_z(model); // Required by the OBJ format.
     }
-    else if (strcmp(fileExt, "stl") == 0)
+    else if (strcmp(file_extension, "stl") == 0)
     {
         if (args.color_support)
         {
