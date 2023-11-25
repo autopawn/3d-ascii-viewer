@@ -51,3 +51,14 @@ static inline float vec3_cos_similarity(vec3 a, vec3 b, float a_mag, float b_mag
 {
     return (a.x * b.x + a.y * b.y + a.z * b.z) / (a_mag * b_mag);
 }
+
+static inline vec3 vec3_cross_product(vec3 a, vec3 b)
+{
+    vec3 prod;
+
+    prod.x = a.y * b.z - a.z * b.y;
+    prod.y = a.z * b.x - a.x * b.z;
+    prod.z = a.x * b.y - a.y * b.x;
+
+    return prod;
+}

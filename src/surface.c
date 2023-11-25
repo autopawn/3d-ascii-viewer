@@ -30,9 +30,7 @@ vec3 triangle_normal(const struct triangle *tri)
     v2.y = tri->p3.y - tri->p1.y;
     v2.z = tri->p3.z - tri->p1.z;
 
-    normal.x = v1.y * v2.z - v1.z * v2.y;
-    normal.y = v1.z * v2.x - v1.x * v2.z;
-    normal.z = v1.x * v2.y - v1.y * v2.x;
+    normal = vec3_cross_product(v1, v2);
 
     return vec3_normalize(normal);
 }
