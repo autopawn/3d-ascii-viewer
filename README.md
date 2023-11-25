@@ -1,4 +1,4 @@
-# 3d-ascii-viewer-c
+# 3d-ascii-viewer
 
 Viewer of 3D models in ASCII, written in C.
 
