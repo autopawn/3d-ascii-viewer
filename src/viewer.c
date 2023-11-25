@@ -371,7 +371,7 @@ static void surface_draw_model(struct surface *surface, const struct model *mode
         vec3 v2 = model->vertexes[i2];
         vec3 v3 = model->vertexes[i3];
 
-        triangle tri = {.p1 = v1, .p2 = v2, .p3 = v3};
+        struct triangle tri = {.p1 = v1, .p2 = v2, .p3 = v3};
 
         tri.p1 = vec3_rotate_y(az_cos, az_sin, tri.p1);
         tri.p2 = vec3_rotate_y(az_cos, az_sin, tri.p2);
@@ -388,7 +388,7 @@ static void surface_draw_model(struct surface *surface, const struct model *mode
         char c;
         if (static_light)
         {
-            triangle tri_ini = {.p1 = v1, .p2 = v2, .p3 = v3};
+            struct triangle tri_ini = {.p1 = v1, .p2 = v2, .p3 = v3};
             tri_ini.p1 = vec3_to_surface(surface, tri_ini.p1, zoom);
             tri_ini.p2 = vec3_to_surface(surface, tri_ini.p2, zoom);
             tri_ini.p3 = vec3_to_surface(surface, tri_ini.p3, zoom);

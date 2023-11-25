@@ -18,13 +18,32 @@ static float maxi(float a, float b)
     return b;
 }
 
-static bool triangle_orientation(const triangle *tri)
+vec3 triangle_normal(const struct triangle *tri)
+{
+    vec3 v1, v2, normal;
+
+    v1.x = tri->p2.x - tri->p1.x;
+    v1.y = tri->p2.y - tri->p1.y;
+    v1.z = tri->p2.z - tri->p1.z;
+
+    v2.x = tri->p3.x - tri->p1.x;
+    v2.y = tri->p3.y - tri->p1.y;
+    v2.z = tri->p3.z - tri->p1.z;
+
+    normal.x = v1.y * v2.z - v1.z * v2.y;
+    normal.y = v1.z * v2.x - v1.x * v2.z;
+    normal.z = v1.x * v2.y - v1.y * v2.x;
+
+    return vec3_normalize(normal);
+}
+
+static bool triangle_orientation(const struct triangle *tri)
 {
     return (tri->p2.x - tri->p1.x) * (tri->p3.y - tri->p2.y)
             < (tri->p3.x - tri->p2.x) * (tri->p2.y - tri->p1.y);
 }
 
-static triangle triangle_sort_by_x(triangle triangle)
+static struct triangle triangle_sort_by_x(struct triangle triangle)
 {
     vec3 aux;
     for (unsigned int i = 0; i < 2; ++i)
@@ -101,7 +120,7 @@ static inline int idx_y(const struct surface *surface, float y)
     return maxi(0, mini(surface->size_y - 1, (int) floorf(y / dy)));
 }
 
-static inline float limit_y_1(const triangle *tri, float x)
+static inline float limit_y_1(const struct triangle *tri, float x)
 {
     if (x <= tri->p1.x)
         return tri->p1.y;
@@ -112,7 +131,7 @@ static inline float limit_y_1(const triangle *tri, float x)
     return tri->p2.y + (tri->p3.y - tri->p2.y) * (x - tri->p2.x) / (tri->p3.x - tri->p2.x);
 }
 
-static inline float limit_y_2(const triangle *tri, float x)
+static inline float limit_y_2(const struct triangle *tri, float x)
 {
     if (x <= tri->p1.x)
         return tri->p1.y;
@@ -121,7 +140,7 @@ static inline float limit_y_2(const triangle *tri, float x)
     return tri->p1.y + (tri->p3.y - tri->p1.y) * (x - tri->p1.x) / (tri->p3.x - tri->p1.x);
 }
 
-static inline float triangle_depth(const struct surface *surface, const triangle *tri,
+static inline float triangle_depth(const struct surface *surface, const struct triangle *tri,
         vec3 normal, int xx, int yy)
 {
     float dx = surface->dx;
@@ -133,7 +152,7 @@ static inline float triangle_depth(const struct surface *surface, const triangle
     return tri->p1.z - (normal.x * (x - tri->p1.x) + normal.y * (y - tri->p1.y)) / normal.z;
 }
 
-void surface_draw_triangle(struct surface *surface, triangle tri, bool inverted_orientation,
+void surface_draw_triangle(struct surface *surface, struct triangle tri, bool inverted_orientation,
         char c, int material)
 {
     if (triangle_orientation(&tri) != !inverted_orientation)
