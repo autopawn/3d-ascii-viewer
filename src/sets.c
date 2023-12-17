@@ -1,4 +1,5 @@
 #include "sets.h"
+#include "trigonometry.h"
 
 vec3 get_bounding_box_center(const vec3 *A, int n)
 {

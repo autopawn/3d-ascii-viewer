@@ -1,5 +1,7 @@
 #include "model.h"
 
+#include "triangularization.h"
+
 #include <assert.h>
 #include <libgen.h>
 #include <stdlib.h>
@@ -417,28 +419,64 @@ struct model *model_load_from_obj(const char *fname, bool color_support)
         }
         else if (strcmp(instr, "f") == 0)
         {
-            int i1, i2, i3;
+            // Parse face indexes
+            int idx_count = 0;
+            int idx_capacity = 1;
+            int *idxs = malloc(idx_capacity * sizeof(int));
 
-            if (!parse_int(&bufferp, &i1) || !parse_int(&bufferp, &i2))
+            int idx_read;
+            while (parse_int(&bufferp, &idx_read))
+            {
+                if (idx_count == idx_capacity)
+                {
+                    idx_capacity *= 2;
+                    idxs = realloc(idxs, idx_capacity * sizeof(int));
+                }
+
+                int idx = obj_derelativize_idx(idx_read, model->vertex_count);
+                idxs[idx_count++] = idx;
+            }
+
+            if (idx_count < 3)
             {
                 fprintf(stderr, "ERROR: invalid \"f\" instruction.\n");
                 fclose(fp);
+                free(idxs);
                 model_free(model);
                 return NULL;
             }
 
-            while (parse_int(&bufferp, &i3))
+            // Triangularize face
+            vec3 *vecs;
+            if (!(vecs = malloc(idx_count * sizeof(vec3))))
             {
-                int i1d, i2d, i3d;
-
-                i1d = obj_derelativize_idx(i1, model->vertex_count);
-                i2d = obj_derelativize_idx(i2, model->vertex_count);
-                i3d = obj_derelativize_idx(i3, model->vertex_count);
-
-                model_add_face(model, i1d, i2d, i3d, current_material);
-                // Shift for possible new triangular face
-                i2 = i3;
+                fprintf(stderr, "ERROR: Memory allocation failure.\n");
+                exit(1);
             }
+            for (int i = 0; i < idx_count; ++i)
+                vecs[i] = model->vertexes[idxs[i]];
+
+            int *triangle_idxs;
+            if (!(triangle_idxs = malloc((idx_count - 2) * 3 * sizeof(int))))
+            {
+                fprintf(stderr, "ERROR: Memory allocation failure.\n");
+                exit(1);
+            }
+
+            triangularize(vecs, idx_count, triangle_idxs);
+
+            for (int i = 0; i < idx_count - 2; ++i)
+            {
+                int i1 = idxs[triangle_idxs[3 * i]];
+                int i2 = idxs[triangle_idxs[3 * i + 1]];
+                int i3 = idxs[triangle_idxs[3 * i + 2]];
+
+                model_add_face(model, i1, i2, i3, current_material);
+            }
+
+            free(idxs);
+            free(vecs);
+            free(triangle_idxs);
         }
         else if (color_support && strcmp(instr, "mtllib") == 0)
         {

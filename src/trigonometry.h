@@ -15,6 +15,10 @@ static inline float vec3_mag(vec3 v)
 static inline vec3 vec3_normalize(vec3 v)
 {
     float mag = vec3_mag(v);
+
+    if (mag == 0)
+        return (vec3){0, 0, 0};
+
     v.x /= mag;
     v.y /= mag;
     v.z /= mag;
@@ -47,9 +51,34 @@ static inline vec3 vec3_neg(vec3 v)
     return v;
 }
 
+static inline vec3 vec3_add(vec3 a, vec3 b)
+{
+    vec3 res;
+
+    res.x = a.x + b.x;
+    res.y = a.y + b.y;
+    res.z = a.z + b.z;
+    return res;
+}
+
+static inline vec3 vec3_sub(vec3 a, vec3 b)
+{
+    vec3 res;
+
+    res.x = a.x - b.x;
+    res.y = a.y - b.y;
+    res.z = a.z - b.z;
+    return res;
+}
+
+static inline float vec3_dot_product(vec3 a, vec3 b)
+{
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
 static inline float vec3_cos_similarity(vec3 a, vec3 b, float a_mag, float b_mag)
 {
-    return (a.x * b.x + a.y * b.y + a.z * b.z) / (a_mag * b_mag);
+    return vec3_dot_product(a, b) / (a_mag * b_mag);
 }
 
 static inline vec3 vec3_cross_product(vec3 a, vec3 b)
