@@ -337,6 +337,31 @@ static void model_load_materials_from_mtl(struct model *model, const char *mtl_f
     fclose(fp);
 }
 
+// Read a line, duplicating the size of the buffer if necessary, using only gets() for portability.
+static char *read_line(char **buffer, int *buffer_size, FILE *fp)
+{
+    if (!fgets(*buffer, *buffer_size, fp))
+        return NULL;
+
+    while ((*buffer)[strlen(*buffer) - 1] != '\n')
+    {
+        if (!(*buffer = realloc(*buffer, *buffer_size * 2)))
+        {
+            fprintf(stderr, "ERROR: Memory allocation failure.\n");
+            exit(1);
+        }
+
+        if (!fgets(*buffer + *buffer_size - 1, *buffer_size + 1, fp))
+        {
+            *buffer_size *= 2;
+            return NULL;
+        }
+
+        *buffer_size *= 2;
+    }
+    return *buffer;
+}
+
 struct model *model_load_from_obj(const char *fname, bool color_support)
 {
     FILE *fp = fopen(fname, "r");
@@ -349,12 +374,19 @@ struct model *model_load_from_obj(const char *fname, bool color_support)
     // Create a new model
     struct model *model = model_init();
 
-    // Read each line of the file
-    char buffer[256];
-
     int current_material = -1;
 
-    while (fgets(buffer, sizeof(buffer), fp))
+    // Read each line of the file
+    int buffer_size = 128;
+    char *buffer;
+
+    if (!(buffer = malloc(buffer_size)))
+    {
+        fprintf(stderr, "ERROR: Memory allocation failure.\n");
+        exit(1);
+    }
+
+    while (read_line(&buffer, &buffer_size, fp))
     {
         string_strip(buffer);
 
@@ -449,6 +481,7 @@ struct model *model_load_from_obj(const char *fname, bool color_support)
         }
     }
 
+    free(buffer);
     fclose(fp);
 
     model_validate_idxs(model);
