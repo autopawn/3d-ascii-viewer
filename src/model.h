@@ -1,7 +1,6 @@
 #pragma once
 
 #include "trigonometry.h"
-#include "sets.h"
 
 #include <stdbool.h>
 

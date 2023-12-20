@@ -91,3 +91,7 @@ static inline vec3 vec3_cross_product(vec3 a, vec3 b)
 
     return prod;
 }
+
+vec3 get_bounding_box_center(const vec3 *A, int n);
+
+float get_max_dist(const vec3 *A, int n, vec3 p);
