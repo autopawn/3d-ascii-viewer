@@ -176,6 +176,38 @@ void model_normalize(struct model *model)
     }
 }
 
+void model_change_orientation(struct model *model, int axis1, int axis2, int axis3)
+{
+    assert(0 <= axis1 && axis1 <= 2);
+    assert(0 <= axis2 && axis2 <= 2);
+    assert(0 <= axis3 && axis3 <= 2);
+
+    for (int i = 0; i < model->vertex_count; ++i)
+    {
+        vec3 vertex;
+
+        vertex.x = model->vertexes[i].x;
+        if (axis1 == 1)
+            vertex.x = model->vertexes[i].y;
+        if (axis1 == 2)
+            vertex.x = model->vertexes[i].z;
+
+        vertex.y = model->vertexes[i].x;
+        if (axis2 == 1)
+            vertex.y = model->vertexes[i].y;
+        if (axis2 == 2)
+            vertex.y = model->vertexes[i].z;
+
+        vertex.z = model->vertexes[i].x;
+        if (axis3 == 1)
+            vertex.z = model->vertexes[i].y;
+        if (axis3 == 2)
+            vertex.z = model->vertexes[i].z;
+
+        model->vertexes[i] = vertex;
+    }
+}
+
 void model_invert_x(struct model *model)
 {
     for (int i = 0; i < model->vertex_count; ++i)

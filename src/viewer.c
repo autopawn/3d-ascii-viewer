@@ -41,6 +41,8 @@ static void output_usage(int argc, char *argv[])
     printf("  -t                Allow the animation to reach maximum elevation.\n");
     printf("  -l                Don't rotate the light with the model.\n");
     printf("  -X, -Y, -Z        Invert respective axes.\n");
+    printf("  -XYZ, -XZY, -YXZ, Change model orientation.\n");
+    printf("  -YZX, -ZXY, -ZYX  \n");
     printf("  -z <zoom>         Change zoom level (default: 100).\n");
     printf("\n");
     printf("  --color           Display with colors.\n");
@@ -80,6 +82,8 @@ struct arguments
     bool static_light;
     char *lum_chars;
     bool invert_x, invert_y, invert_z;
+    int axes[3];
+    bool axes_flip_faces;
 
     bool color_support;
 
@@ -202,6 +206,48 @@ static void parse_arguments(int argc, char *argv[], struct arguments *args)
                 fprintf(stderr, "ERROR: Invalid zoom: %s\n", argv[i]);
                 exit(1);
             }
+        }
+        else if (!strcmp(argv[i], "-XYZ"))
+        {
+            args->axes[0] = 0;
+            args->axes[1] = 1;
+            args->axes[2] = 2;
+            args->axes_flip_faces = false;
+        }
+        else if (!strcmp(argv[i], "-XZY"))
+        {
+            args->axes[0] = 0;
+            args->axes[1] = 2;
+            args->axes[2] = 1;
+            args->axes_flip_faces = true;
+        }
+        else if (!strcmp(argv[i], "-YXZ"))
+        {
+            args->axes[0] = 1;
+            args->axes[1] = 0;
+            args->axes[2] = 2;
+            args->axes_flip_faces = true;
+        }
+        else if (!strcmp(argv[i], "-YZX"))
+        {
+            args->axes[0] = 1;
+            args->axes[1] = 2;
+            args->axes[2] = 0;
+            args->axes_flip_faces = false;
+        }
+        else if (!strcmp(argv[i], "-ZXY"))
+        {
+            args->axes[0] = 2;
+            args->axes[1] = 0;
+            args->axes[2] = 1;
+            args->axes_flip_faces = false;
+        }
+        else if (!strcmp(argv[i], "-ZYX"))
+        {
+            args->axes[0] = 2;
+            args->axes[1] = 1;
+            args->axes[2] = 0;
+            args->axes_flip_faces = true;
         }
         else if (!strcmp(argv[i], "--color"))
         {
@@ -501,6 +547,10 @@ int main(int argc, char *argv[])
     args.invert_y = false;
     args.invert_z = false;
     args.zoom = 100;
+    args.axes[0] = 0;
+    args.axes[1] = 1;
+    args.axes[2] = 2;
+    args.axes_flip_faces = false;
 
     args.color_support = false;
 
@@ -554,6 +604,11 @@ int main(int argc, char *argv[])
         exit(1);
     }
     model_normalize(model);
+
+    // Change model orientation as required by the options
+    model_change_orientation(model, args.axes[0], args.axes[1], args.axes[2]);
+    if (args.axes_flip_faces)
+        model_invert_triangles(model);
 
     // Invert axes as required by the options
     if (args.invert_x)
